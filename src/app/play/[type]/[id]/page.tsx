@@ -197,9 +197,10 @@ export default function PlayPage({ params }: { params: { type: string; id: strin
     const loadTrack = async () => {
       try {
         // Validate track type
-        if (!trackService.isValidTrackType(params.type)) {
-          console.error('Invalid track type:', params.type)
-          setError(`Invalid track type: ${params.type}`)
+        const type = params.type
+        if (!trackService.isValidTrackType(type)) {
+          console.error('Invalid track type:', type)
+          setError(`Invalid track type: ${type}`)
           return
         }
 
@@ -213,16 +214,16 @@ export default function PlayPage({ params }: { params: { type: string; id: strin
         // Try to load from database first
         let loadedTrack = user ? 
           await trackService.getTrackWithProgress(user.id, trackId) :
-          await trackService.getTrackById(params.type, trackId)
+          await trackService.getTrackById(type, trackId)
 
         // If not found in database, try static tracks
-        if (!loadedTrack) {
-          loadedTrack = staticTracks[params.type as Track['type']]?.[trackId] || null
+        if (!loadedTrack && staticTracks[type]?.[trackId]) {
+          loadedTrack = staticTracks[type][trackId]
         }
 
         if (!loadedTrack) {
-          console.error('Track not found:', params.type, trackId)
-          setError(`Track not found: ${params.type} ${trackId}`)
+          console.error('Track not found:', type, trackId)
+          setError(`Track not found: ${type} ${trackId}`)
           return
         }
 
