@@ -21,7 +21,9 @@ const config: Config = {
           dark: 'rgb(var(--color-secondary-dark) / <alpha-value>)',
         },
         background: 'rgb(var(--color-background) / <alpha-value>)',
-        text: 'rgb(var(--color-text) / <alpha-value>)',
+        text: {
+          DEFAULT: 'rgb(var(--color-text) / <alpha-value>)',
+        },
         border: 'rgb(var(--color-border) / <alpha-value>)',
       },
       fontFamily: {
