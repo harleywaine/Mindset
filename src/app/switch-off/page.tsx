@@ -8,9 +8,9 @@ export default function SwitchOff() {
   const router = useRouter()
 
   const sessions = [
-    { title: 'Short Version', duration: '5 Minutes', type: 'switch', id: 'off-short' },
-    { title: 'Medium Version', duration: '10 Minutes', type: 'switch', id: 'off-medium' },
-    { title: 'Long Version', duration: '20 Minutes', type: 'switch', id: 'off-long' },
+    { title: 'Short Version', duration: '5 Minutes', type: 'switch-off', id: 8 },
+    { title: 'Medium Version', duration: '10 Minutes', type: 'switch-off', id: 9 },
+    { title: 'Long Version', duration: '20 Minutes', type: 'switch-off', id: 10 },
   ]
 
   return (

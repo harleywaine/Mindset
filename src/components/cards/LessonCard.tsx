@@ -7,7 +7,7 @@ interface LessonCardProps {
   title: string
   duration: string
   type: string
-  id: string
+  id: string | number
   completed?: boolean
 }
 

@@ -2,105 +2,100 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import Link from 'next/link'
 import { useAuth } from '@/contexts/AuthContext'
+import Link from 'next/link'
 
 export default function SignUp() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [error, setError] = useState('')
+  const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  const [success, setSuccess] = useState(false)
   const router = useRouter()
   const { signUp } = useAuth()
 
-  const validatePassword = (password: string) => {
-    if (password.length < 6) {
-      return 'Password must be at least 6 characters long'
-    }
-    return null
-  }
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
-    // Validate password
-    const passwordError = validatePassword(password)
-    if (passwordError) {
-      setError(passwordError)
-      return
-    }
+    setError(null)
+    setLoading(true)
 
     try {
-      setError('')
-      setLoading(true)
-      const result = await signUp(email, password)
-      if (result.user) {
-        router.push('/login?message=Check your email to confirm your account')
-      }
-    } catch (error: any) {
-      console.error('Signup error:', error)
-      if (error.message) {
-        setError(error.message)
-      } else if (error.error_description) {
-        setError(error.error_description)
-      } else {
-        setError('Failed to create an account. Please try again.')
-      }
+      await signUp(email, password)
+      setSuccess(true)
+    } catch (err) {
+      setError('Failed to create account')
+      console.error('Signup error:', err)
     } finally {
       setLoading(false)
     }
   }
 
+  if (success) {
+    return (
+      <div className="min-h-screen flex items-center justify-center px-4">
+        <div className="max-w-md w-full space-y-8 text-center">
+          <div className="bg-green-500/10 border border-green-500 text-green-500 rounded-md p-6">
+            <h2 className="text-xl font-bold mb-2">Check your email</h2>
+            <p>
+              We've sent you an email with a link to confirm your account.
+              Please check your inbox and click the link to continue.
+            </p>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#0A0A0A]">
-      <div className="max-w-md w-full space-y-8 p-8 bg-[#1A1A1A] rounded-xl">
+    <div className="min-h-screen flex items-center justify-center px-4">
+      <div className="max-w-md w-full space-y-8">
         <div>
-          <h2 className="mt-6 text-center text-3xl font-extrabold text-white">
-            Create your account
-          </h2>
+          <h2 className="mt-6 text-center text-3xl font-extrabold">Create your account</h2>
           <p className="mt-2 text-center text-sm text-gray-400">
-            Please enter your email and password to sign up
+            Already have an account?{' '}
+            <Link href="/login" className="font-medium text-[#2B6D79] hover:text-[#2B6D79]/80">
+              Sign in
+            </Link>
           </p>
         </div>
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
           {error && (
-            <div className="bg-red-500/10 border border-red-500 text-red-500 px-4 py-2 rounded">
+            <div className="bg-red-500/10 border border-red-500 text-red-500 rounded-md p-3 text-sm">
               {error}
             </div>
           )}
           <div className="rounded-md shadow-sm space-y-4">
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-300 mb-1">
+              <label htmlFor="email" className="sr-only">
                 Email address
               </label>
               <input
                 id="email"
                 name="email"
                 type="email"
+                autoComplete="email"
                 required
-                className="appearance-none rounded-lg relative block w-full px-3 py-2 border border-gray-700 bg-[#23262A] placeholder-gray-400 text-white focus:outline-none focus:ring-2 focus:ring-[#2B6D79] focus:border-transparent"
-                placeholder="you@example.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+                className="appearance-none rounded-lg relative block w-full px-3 py-2 border border-gray-700 bg-[#23262A] placeholder-gray-500 text-white focus:outline-none focus:ring-[#2B6D79] focus:border-[#2B6D79] focus:z-10 sm:text-sm"
+                placeholder="Email address"
               />
             </div>
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-300 mb-1">
+              <label htmlFor="password" className="sr-only">
                 Password
               </label>
               <input
                 id="password"
                 name="password"
                 type="password"
+                autoComplete="new-password"
                 required
-                className="appearance-none rounded-lg relative block w-full px-3 py-2 border border-gray-700 bg-[#23262A] placeholder-gray-400 text-white focus:outline-none focus:ring-2 focus:ring-[#2B6D79] focus:border-transparent"
-                placeholder="••••••••"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                className="appearance-none rounded-lg relative block w-full px-3 py-2 border border-gray-700 bg-[#23262A] placeholder-gray-500 text-white focus:outline-none focus:ring-[#2B6D79] focus:border-[#2B6D79] focus:z-10 sm:text-sm"
+                placeholder="Password"
               />
-              <p className="mt-1 text-sm text-gray-400">
-                Password must be at least 6 characters long
-              </p>
             </div>
           </div>
 
@@ -108,16 +103,10 @@ export default function SignUp() {
             <button
               type="submit"
               disabled={loading}
-              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-lg text-white bg-[#2B6D79] hover:bg-[#2B6D79]/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#2B6D79] disabled:opacity-50 disabled:cursor-not-allowed"
+              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-[#2B6D79] hover:bg-[#2B6D79]/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#2B6D79] disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {loading ? 'Creating account...' : 'Sign up'}
+              {loading ? 'Creating account...' : 'Create account'}
             </button>
-          </div>
-
-          <div className="text-sm text-center">
-            <Link href="/login" className="font-medium text-[#2B6D79] hover:text-[#2B6D79]/90">
-              Already have an account? Sign in
-            </Link>
           </div>
         </form>
       </div>

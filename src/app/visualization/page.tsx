@@ -4,18 +4,68 @@ import { Check } from '@phosphor-icons/react'
 import Link from 'next/link'
 import LessonCard from '@/components/cards/LessonCard'
 
+interface Lesson {
+  id: number
+  title: string
+  duration: string
+  type: string
+  completed: boolean
+}
+
 export default function Visualization() {
-  const maintenanceSessions = [
-    { title: 'Short Session', duration: '5 Minutes', type: 'maintenance', id: 'short' },
-    { title: 'Medium Session', duration: '10 Minutes', type: 'maintenance', id: 'medium' },
-    { title: 'Long Session', duration: '15 Minutes', type: 'maintenance', id: 'long' },
+  const maintenanceSessions: Lesson[] = [
+    { 
+      id: 1, 
+      title: 'Basic Visualization', 
+      duration: '10 Minutes', 
+      type: 'visualization', 
+      completed: false 
+    },
+    { 
+      id: 2, 
+      title: 'Advanced Visualization', 
+      duration: '15 Minutes', 
+      type: 'visualization', 
+      completed: false 
+    },
+    { 
+      id: 3, 
+      title: 'Expert Visualization', 
+      duration: '20 Minutes', 
+      type: 'visualization', 
+      completed: false 
+    }
   ]
 
-  const basicTraining = [
-    { title: 'Introduction', duration: '20 Minutes', type: 'training', id: 'intro', completed: true },
-    { title: 'Lesson 1', duration: '20 Minutes', type: 'training', id: 'lesson-1', completed: true },
-    { title: 'Lesson 2', duration: '20 Minutes', type: 'training', id: 'lesson-2', completed: false },
-    { title: 'Lesson 3', duration: '20 Minutes', type: 'training', id: 'lesson-3', completed: false },
+  const basicTraining: Lesson[] = [
+    { 
+      id: 1, 
+      title: 'Introduction', 
+      duration: '10 Minutes', 
+      type: 'visualization', 
+      completed: true 
+    },
+    { 
+      id: 2, 
+      title: 'Mental Rehearsal', 
+      duration: '15 Minutes', 
+      type: 'visualization', 
+      completed: true 
+    },
+    { 
+      id: 3, 
+      title: 'Performance Imagery', 
+      duration: '15 Minutes', 
+      type: 'visualization', 
+      completed: false 
+    },
+    { 
+      id: 4, 
+      title: 'Success Visualization', 
+      duration: '20 Minutes', 
+      type: 'visualization', 
+      completed: false 
+    }
   ]
 
   return (

@@ -5,7 +5,7 @@ import Link from 'next/link'
 import LessonCard from '@/components/cards/LessonCard'
 
 interface Lesson {
-  id: string
+  id: number
   title: string
   duration: string
   type: string
@@ -14,10 +14,34 @@ interface Lesson {
 
 export default function Home() {
   const foundations: Lesson[] = [
-    { id: 'visualise-race', title: 'Visualise the Race', duration: '20 Minutes', type: 'foundation', completed: true },
-    { id: 'confident-behaviour', title: 'Confident Behaviour', duration: '20 Minutes', type: 'foundation', completed: true },
-    { id: 'training-breakthroughs', title: 'Training Breakthroughs', duration: '20 Minutes', type: 'foundation', completed: false },
-    { id: 'overcoming-obstacles', title: 'Overcoming Obstacles', duration: '20 Minutes', type: 'foundation', completed: false },
+    { 
+      id: 1, 
+      title: 'Foundation Basics', 
+      duration: '5 Minutes', 
+      type: 'foundation', 
+      completed: false 
+    },
+    { 
+      id: 2, 
+      title: 'Breathing Techniques', 
+      duration: '5 Minutes', 
+      type: 'foundation', 
+      completed: false 
+    },
+    { 
+      id: 3, 
+      title: 'Body Awareness', 
+      duration: '5 Minutes', 
+      type: 'foundation', 
+      completed: false 
+    },
+    { 
+      id: 4, 
+      title: 'Mental Focus', 
+      duration: '5 Minutes', 
+      type: 'foundation', 
+      completed: false 
+    }
   ]
 
   const switches = [

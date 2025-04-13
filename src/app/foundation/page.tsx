@@ -4,13 +4,13 @@ import { CaretLeft } from '@phosphor-icons/react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 
-export default function TakeControl() {
+export default function Foundation() {
   const router = useRouter()
 
   const sessions = [
-    { title: 'Short Version', duration: '5 Minutes', type: 'take-control', id: 11 },
-    { title: 'Medium Version', duration: '10 Minutes', type: 'take-control', id: 12 },
-    { title: 'Long Version', duration: '20 Minutes', type: 'take-control', id: 13 },
+    { title: 'Breathing Basics', duration: '5 Minutes', type: 'foundation', id: 14 },
+    { title: 'Body Scan', duration: '10 Minutes', type: 'foundation', id: 15 },
+    { title: 'Mind Awareness', duration: '15 Minutes', type: 'foundation', id: 16 },
   ]
 
   return (
@@ -28,8 +28,8 @@ export default function TakeControl() {
 
       {/* Title and description */}
       <div className="space-y-2">
-        <h1 className="text-2xl font-semibold">Take Control</h1>
-        <p className="text-gray-400">Master your mind with focused mental control sessions</p>
+        <h1 className="text-2xl font-semibold">Foundation</h1>
+        <p className="text-gray-400">Build your meditation practice with essential techniques</p>
       </div>
 
       {/* Session list */}

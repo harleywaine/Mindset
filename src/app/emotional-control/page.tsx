@@ -1,20 +1,71 @@
 'use client'
 
-import Link from 'next/link'
+import { useAuth } from '@/contexts/AuthContext'
 import LessonCard from '@/components/cards/LessonCard'
+import Link from 'next/link'
 
-export default function EmotionalControl() {
-  const maintenanceSessions = [
-    { title: 'Short Session', duration: '5 Minutes', type: 'maintenance', id: 'short' },
-    { title: 'Medium Session', duration: '10 Minutes', type: 'maintenance', id: 'medium' },
-    { title: 'Long Session', duration: '15 Minutes', type: 'maintenance', id: 'long' },
+interface Lesson {
+  id: number
+  title: string
+  duration: string
+  type: string
+  completed: boolean
+}
+
+export default function EmotionalControlPage() {
+  const maintenanceSessions: Lesson[] = [
+    { 
+      id: 1, 
+      title: 'Quick Reset', 
+      duration: '2 Minutes', 
+      type: 'maintenance', 
+      completed: false 
+    },
+    { 
+      id: 2, 
+      title: 'Emotional Balance', 
+      duration: '5 Minutes', 
+      type: 'maintenance', 
+      completed: false 
+    },
+    { 
+      id: 3, 
+      title: 'Stress Relief', 
+      duration: '10 Minutes', 
+      type: 'maintenance', 
+      completed: false 
+    }
   ]
 
-  const basicTraining = [
-    { title: 'Introduction', duration: '20 Minutes', type: 'training', id: 'intro', completed: true },
-    { title: 'Lesson 1', duration: '20 Minutes', type: 'training', id: 'lesson-1', completed: true },
-    { title: 'Lesson 2', duration: '20 Minutes', type: 'training', id: 'lesson-2', completed: false },
-    { title: 'Lesson 3', duration: '20 Minutes', type: 'training', id: 'lesson-3', completed: false },
+  const trainingLessons: Lesson[] = [
+    { 
+      id: 1, 
+      title: 'Understanding Emotions', 
+      duration: '10 Minutes', 
+      type: 'training', 
+      completed: false 
+    },
+    { 
+      id: 2, 
+      title: 'Emotional Awareness', 
+      duration: '15 Minutes', 
+      type: 'training', 
+      completed: false 
+    },
+    { 
+      id: 3, 
+      title: 'Response Control', 
+      duration: '15 Minutes', 
+      type: 'training', 
+      completed: false 
+    },
+    { 
+      id: 4, 
+      title: 'Advanced Regulation', 
+      duration: '20 Minutes', 
+      type: 'training', 
+      completed: false 
+    }
   ]
 
   return (
@@ -37,10 +88,10 @@ export default function EmotionalControl() {
         {/* Header */}
         <div className="space-y-2">
           <h1 className="text-2xl font-semibold">Emotional Control Training</h1>
-          <p className="text-gray-400">Take control of your emotions</p>
+          <p className="text-gray-400">Master your emotional state</p>
         </div>
 
-        {/* Maintenance Section */}
+        {/* Maintenance Sessions */}
         <section>
           <h2 className="text-lg mb-4">Maintenance</h2>
           <div className="overflow-x-auto pb-4 -mx-4 px-4">
@@ -64,18 +115,18 @@ export default function EmotionalControl() {
           </div>
         </section>
 
-        {/* Basic Training Section */}
+        {/* Training Lessons */}
         <section>
-          <h2 className="text-lg mb-4">Basic Training</h2>
+          <h2 className="text-lg mb-4">Training Lessons</h2>
           <div className="space-y-3">
-            {basicTraining.map((lesson) => (
+            {trainingLessons.map((item) => (
               <LessonCard
-                key={lesson.id}
-                title={lesson.title}
-                duration={lesson.duration}
-                type={lesson.type}
-                id={lesson.id}
-                completed={lesson.completed}
+                key={item.id}
+                title={item.title}
+                duration={item.duration}
+                type={item.type}
+                id={item.id}
+                completed={item.completed}
               />
             ))}
           </div>
