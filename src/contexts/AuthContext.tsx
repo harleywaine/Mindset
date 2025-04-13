@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, useContext, useEffect, useState } from 'react'
+import React, { createContext, useContext, useEffect, useState, useRef } from 'react'
 import { User, Session } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase/client'
 
@@ -20,7 +20,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null)
   const [loading, setLoading] = useState(true)
   const [supabase] = useState(() => createClient())
-  const mounted = React.useRef(true)
+  const mounted = useRef(true)
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
@@ -28,9 +28,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (mounted.current) {
           if (session) {
             setUser(session.user)
+            setSession(session)
             setLoading(false)
           } else {
             setUser(null)
+            setSession(null)
             setLoading(false)
           }
         }
@@ -55,13 +57,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         if (session) {
           setUser(session.user)
+          setSession(session)
         } else {
           setUser(null)
+          setSession(null)
         }
       }
     } catch (error) {
       console.error('Error checking user:', error)
       setUser(null)
+      setSession(null)
     } finally {
       if (mounted.current) {
         setLoading(false)
