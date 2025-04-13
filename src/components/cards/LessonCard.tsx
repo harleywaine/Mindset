@@ -15,7 +15,7 @@ export default function LessonCard({ title, duration, type, id, completed }: Les
   return (
     <Link 
       href={`/play/${type}/${id}`}
-      className="flex items-center justify-between p-4 rounded-lg bg-[#23262A] hover:bg-[#2B6D79]/10 transition-colors"
+      className="flex items-center justify-between p-2 rounded-lg bg-[#23262A] hover:bg-[#2B6D79]/10 transition-colors"
     >
       <div className="flex items-center gap-3">
         <div className="w-10 h-10 rounded-lg bg-[#1A1D20] flex items-center justify-center text-[#2B6D79]">
@@ -29,7 +29,9 @@ export default function LessonCard({ title, duration, type, id, completed }: Les
         </div>
       </div>
       {completed && (
-        <Check size={20} weight="bold" className="text-[#2B6D79]" />
+        <div className="w-6 h-6 rounded-full border border-[#2B6D79] flex items-center justify-center">
+          <Check size={14} weight="bold" className="text-[#2B6D79]" />
+        </div>
       )}
     </Link>
   )

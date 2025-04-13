@@ -1,13 +1,24 @@
 'use client'
 
-import { useAuth } from '@/contexts/AuthContext'
 import { Lightning, BatteryFull, ShieldCheck } from '@phosphor-icons/react'
 import Link from 'next/link'
 import LessonCard from '@/components/cards/LessonCard'
 
+interface Lesson {
+  id: string
+  title: string
+  duration: string
+  type: string
+  completed: boolean
+}
+
 export default function Home() {
-  const { user } = useAuth()
-  const firstName = user?.user_metadata?.full_name?.split(' ')[0] || 'there'
+  const foundations: Lesson[] = [
+    { id: 'visualise-race', title: 'Visualise the Race', duration: '20 Minutes', type: 'foundation', completed: true },
+    { id: 'confident-behaviour', title: 'Confident Behaviour', duration: '20 Minutes', type: 'foundation', completed: true },
+    { id: 'training-breakthroughs', title: 'Training Breakthroughs', duration: '20 Minutes', type: 'foundation', completed: false },
+    { id: 'overcoming-obstacles', title: 'Overcoming Obstacles', duration: '20 Minutes', type: 'foundation', completed: false },
+  ]
 
   const switches = [
     { name: 'Switch On', Icon: Lightning, href: '/switch-on' },
@@ -15,18 +26,11 @@ export default function Home() {
     { name: 'Take Control', Icon: ShieldCheck, href: '/take-control' },
   ]
 
-  const foundations = [
-    { title: 'Visualise the Race', duration: '20 Minutes', type: 'foundation', id: 'visualise-race', completed: true },
-    { title: 'Confident Behaviour', duration: '20 Minutes', type: 'foundation', id: 'confident-behaviour', completed: true },
-    { title: 'Training Breakthroughs', duration: '20 Minutes', type: 'foundation', id: 'training-breakthroughs', completed: false },
-    { title: 'Overcoming Obstacles', duration: '20 Minutes', type: 'foundation', id: 'overcoming-obstacles', completed: false },
-  ]
-
   return (
     <>
       {/* Header */}
       <div className="mb-8">
-        <h1 className="text-2xl font-semibold mb-1">Welcome back, {firstName}</h1>
+        <h1 className="text-2xl font-semibold mb-1">Welcome to Meditation App</h1>
         <p className="text-gray-400">Let's make some progress</p>
       </div>
 

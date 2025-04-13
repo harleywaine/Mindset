@@ -8,6 +8,7 @@ export default function Visualization() {
   const maintenanceSessions = [
     { title: 'Short Session', duration: '5 Minutes', type: 'maintenance', id: 'short' },
     { title: 'Medium Session', duration: '10 Minutes', type: 'maintenance', id: 'medium' },
+    { title: 'Long Session', duration: '15 Minutes', type: 'maintenance', id: 'long' },
   ]
 
   const basicTraining = [
@@ -21,14 +22,14 @@ export default function Visualization() {
     <>
       {/* Background Image */}
       <div 
-        className="fixed top-0 left-0 right-0 h-[300px] w-full"
+        className="absolute top-0 left-0 right-0 w-full h-screen pointer-events-none"
         style={{
           backgroundImage: 'url(/grid2-bg.png)',
-          backgroundSize: 'cover',
-          backgroundPosition: 'top',
-          opacity: 0.15,
-          zIndex: 0,
-          mixBlendMode: 'overlay'
+          backgroundSize: '100% auto',
+          backgroundRepeat: 'no-repeat',
+          backgroundPosition: 'top center',
+          opacity: 0.5,
+          zIndex: -1
         }}
       />
 
@@ -42,28 +43,25 @@ export default function Visualization() {
 
         {/* Maintenance Section */}
         <section>
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-lg">Maintenance</h2>
-            <Link href="/visualization/maintenance" className="text-sm text-[#2B6D79]">
-              See all
-            </Link>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            {maintenanceSessions.map((session) => (
-              <Link 
-                key={session.id}
-                href={`/play/${session.type}/${session.id}`}
-                className="flex flex-col p-3 rounded-lg bg-[#23262A] hover:bg-[#2B6D79]/10 transition-colors"
-              >
-                <div className="w-10 h-10 rounded-lg bg-[#1A1D20] flex items-center justify-center text-[#2B6D79] mb-3">
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M8 5.14L19 12L8 18.86V5.14Z" fill="currentColor"/>
-                  </svg>
-                </div>
-                <h3 className="font-medium text-sm">{session.title}</h3>
-                <p className="text-sm text-gray-400">{session.duration}</p>
-              </Link>
-            ))}
+          <h2 className="text-lg mb-4">Maintenance</h2>
+          <div className="overflow-x-auto pb-4 -mx-4 px-4">
+            <div className="flex gap-3 w-max">
+              {maintenanceSessions.map((session) => (
+                <Link 
+                  key={session.id}
+                  href={`/play/${session.type}/${session.id}`}
+                  className="flex flex-col p-3 rounded-lg bg-[#23262A] hover:bg-[#2B6D79]/10 transition-colors w-[160px]"
+                >
+                  <div className="w-10 h-10 rounded-lg bg-[#1A1D20] flex items-center justify-center text-[#2B6D79] mb-3">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M8 5.14L19 12L8 18.86V5.14Z" fill="currentColor"/>
+                    </svg>
+                  </div>
+                  <h3 className="font-medium text-sm">{session.title}</h3>
+                  <p className="text-sm text-gray-400">{session.duration}</p>
+                </Link>
+              ))}
+            </div>
           </div>
         </section>
 

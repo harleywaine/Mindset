@@ -19,6 +19,7 @@ export default function BottomNav() {
       <div className="flex w-[calc(100%-2rem)] max-w-[420px] px-3 py-3 justify-between items-center rounded-[80px] border border-white/[0.21] bg-[#1C1E20]">
         {navigation.map((item) => {
           const isActive = pathname === item.href
+          
           return (
             <Link
               key={item.name}
