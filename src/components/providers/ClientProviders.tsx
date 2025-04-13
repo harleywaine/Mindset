@@ -1,11 +1,26 @@
 'use client'
 
 import { AuthProvider } from '@/contexts/AuthContext'
+import { useState, useEffect } from 'react'
 
-export default function ClientProviders({
+export function ClientProviders({
   children,
 }: {
   children: React.ReactNode
 }) {
-  return <AuthProvider>{children}</AuthProvider>
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  if (!mounted) {
+    return null
+  }
+
+  return (
+    <AuthProvider>
+      {children}
+    </AuthProvider>
+  )
 } 

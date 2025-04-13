@@ -20,38 +20,54 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null)
   const [loading, setLoading] = useState(true)
   const [supabase] = useState(() => createClient())
+  const mounted = React.useRef(true)
 
   useEffect(() => {
-    // Initialize auth state
-    const initializeAuth = async () => {
-      try {
-        // Get the initial session
-        const { data: { session: initialSession } } = await supabase.auth.getSession()
-        if (initialSession) {
-          setSession(initialSession)
-          setUser(initialSession.user)
-        }
-
-        // Set up the auth state listener
-        const { data: { subscription } } = supabase.auth.onAuthStateChange(
-          (_event, currentSession) => {
-            setSession(currentSession)
-            setUser(currentSession?.user ?? null)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        if (mounted.current) {
+          if (session) {
+            setUser(session.user)
+            setLoading(false)
+          } else {
+            setUser(null)
+            setLoading(false)
           }
-        )
-
-        return () => {
-          subscription.unsubscribe()
         }
-      } catch (error) {
-        console.error('Error initializing auth:', error)
-      } finally {
+      }
+    )
+
+    return () => {
+      mounted.current = false
+      subscription.unsubscribe()
+    }
+  }, [supabase.auth])
+
+  const checkUser = async () => {
+    try {
+      if (mounted.current) {
+        setLoading(true)
+        const { data: { session }, error } = await supabase.auth.getSession()
+        
+        if (error) {
+          throw error
+        }
+
+        if (session) {
+          setUser(session.user)
+        } else {
+          setUser(null)
+        }
+      }
+    } catch (error) {
+      console.error('Error checking user:', error)
+      setUser(null)
+    } finally {
+      if (mounted.current) {
         setLoading(false)
       }
     }
-
-    initializeAuth()
-  }, [supabase])
+  }
 
   const signIn = async (email: string, password: string) => {
     try {

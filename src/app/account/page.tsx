@@ -1,101 +1,69 @@
 'use client'
 
-import { useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
-import { useState } from 'react'
-import { createClient } from '@/lib/supabase/client'
+import { useRouter } from 'next/navigation'
+import { useEffect, useState } from 'react'
 
 export default function Account() {
+  const { user, signOut } = useAuth()
   const router = useRouter()
-  const { user, signOut, loading } = useAuth()
-  const [isSigningOut, setIsSigningOut] = useState(false)
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  useEffect(() => {
+    if (mounted && !user) {
+      router.push('/login')
+    }
+  }, [mounted, user, router])
+
+  if (!mounted) {
+    return null
+  }
+
+  if (!user) {
+    return null
+  }
 
   const handleSignOut = async () => {
     try {
-      setIsSigningOut(true)
-      const supabase = createClient()
-      
-      // Sign out from Supabase
       await signOut()
-      
-      // Clear any remaining session data
-      await supabase.auth.signOut()
-      
-      // Clear cookies
-      document.cookie.split(";").forEach((c) => {
-        document.cookie = c
-          .replace(/^ +/, "")
-          .replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/")
-      })
-      
-      // Force a router refresh and navigate to login
-      router.refresh()
       router.push('/login')
     } catch (error) {
       console.error('Error signing out:', error)
-      setIsSigningOut(false)
     }
   }
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[50vh]">
-        <div className="text-gray-400">Loading...</div>
-      </div>
-    )
-  }
-
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <header className="mb-8">
-        <h1 className="text-2xl font-medium mb-1">Account</h1>
-        <p className="text-gray-400">Manage your account settings</p>
-      </header>
-
-      {/* User Info */}
-      <div className="p-4 rounded-lg bg-[#23262A] space-y-4">
-        <div className="space-y-1">
-          <h2 className="text-xl font-medium">Profile</h2>
-          <p className="text-gray-400">{user?.email}</p>
-        </div>
-
-        <div className="pt-4 border-t border-gray-700">
-          <p className="text-sm text-gray-400 mb-2">Account Status</p>
-          <div className="flex items-center space-x-2">
-            <div className="w-2 h-2 rounded-full bg-green-500"></div>
-            <span className="text-sm">
-              {user?.email_confirmed_at ? 'Verified' : 'Pending Verification'}
-            </span>
+    <div className="min-h-screen bg-gray-900 py-12 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-7xl mx-auto">
+        <div className="bg-gray-800 shadow overflow-hidden sm:rounded-lg">
+          <div className="px-4 py-5 sm:px-6">
+            <h3 className="text-lg leading-6 font-medium text-white">
+              Account Information
+            </h3>
+          </div>
+          <div className="border-t border-gray-700">
+            <dl>
+              <div className="bg-gray-800 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+                <dt className="text-sm font-medium text-gray-400">Email</dt>
+                <dd className="mt-1 text-sm text-white sm:mt-0 sm:col-span-2">
+                  {user.email}
+                </dd>
+              </div>
+            </dl>
           </div>
         </div>
-      </div>
-
-      {/* Actions */}
-      <div className="space-y-3">
-        <button
-          onClick={() => router.push('/account/settings')}
-          className="w-full py-4 px-4 rounded-lg bg-[#23262A] text-white font-medium hover:bg-[#2a2d31] transition-colors flex items-center justify-between"
-          disabled={isSigningOut}
-        >
-          <span>Settings</span>
-          <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none">
-            <path d="M9 6L15 12L9 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-          </svg>
-        </button>
-
-        <button
-          onClick={handleSignOut}
-          disabled={isSigningOut}
-          className="w-full py-4 px-4 rounded-lg bg-red-500/10 text-red-500 font-medium hover:bg-red-500/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {isSigningOut ? 'Signing out...' : 'Sign out'}
-        </button>
-      </div>
-
-      {/* Version Info */}
-      <div className="pt-6 text-center">
-        <p className="text-sm text-gray-400">Version 1.0.0</p>
+        <div className="mt-6">
+          <button
+            onClick={handleSignOut}
+            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+          >
+            Sign out
+          </button>
+        </div>
       </div>
     </div>
   )
