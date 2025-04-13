@@ -1,26 +1,85 @@
-@import "tailwindcss";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
+@layer base {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --color-primary: 99 102 241;        /* Indigo-500 */
+    --color-primary-light: 129 140 248; /* Indigo-400 */
+    --color-primary-dark: 79 70 229;    /* Indigo-600 */
+    
+    --color-secondary: 139 92 246;      /* Purple-500 */
+    --color-secondary-light: 167 139 250; /* Purple-400 */
+    --color-secondary-dark: 124 58 237;   /* Purple-600 */
+    
+    --color-background: 255 255 255;    /* White */
+    --color-text: 17 24 39;            /* Gray-900 */
+    --color-border: 229 231 235;       /* Gray-200 */
+  }
+
+  .dark {
+    --color-primary: 129 140 248;       /* Indigo-400 */
+    --color-primary-light: 165 180 252; /* Indigo-300 */
+    --color-primary-dark: 99 102 241;   /* Indigo-500 */
+    
+    --color-secondary: 167 139 250;     /* Purple-400 */
+    --color-secondary-light: 192 132 252; /* Purple-300 */
+    --color-secondary-dark: 139 92 246;   /* Purple-500 */
+    
+    --color-background: 17 24 39;       /* Gray-900 */
+    --color-text: 243 244 246;         /* Gray-100 */
+    --color-border: 75 85 99;          /* Gray-600 */
+  }
+
+  body {
+    @apply bg-background text-text;
+  }
+
+  h1 {
+    @apply text-4xl font-bold mb-6;
+  }
+
+  h2 {
+    @apply text-3xl font-semibold mb-4;
+  }
+
+  h3 {
+    @apply text-2xl font-medium mb-3;
+  }
+
+  p {
+    @apply mb-4;
+  }
+
+  a {
+    @apply text-primary hover:text-primary-dark transition-colors;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@layer components {
+  .btn {
+    @apply px-4 py-2 rounded-md font-medium transition-colors duration-200;
+  }
+
+  .btn-primary {
+    @apply bg-primary text-white hover:bg-primary-dark;
+  }
+
+  .btn-secondary {
+    @apply bg-secondary text-white hover:bg-secondary-dark;
+  }
+
+  .input {
+    @apply w-full px-4 py-2 rounded-md border border-border bg-background text-text focus:outline-none focus:ring-2 focus:ring-primary/50;
+  }
+
+  .card {
+    @apply bg-background border border-border rounded-lg shadow-sm p-6;
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
 }
