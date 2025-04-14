@@ -3,7 +3,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react'
 import { User, AuthError } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase/client'
-import { useRouter } from 'next/navigation'
 
 interface AuthState {
   user: User | null
@@ -26,11 +25,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     error: null,
     initialized: false
   })
-  const router = useRouter()
 
   useEffect(() => {
     let mounted = true
+    let redirecting = false
     console.log('Initializing auth...')
+
+    // Handle redirect based on auth state
+    const handleRedirect = (user: User | null) => {
+      if (redirecting) return
+      redirecting = true
+
+      const currentPath = window.location.pathname
+      if (user && currentPath.includes('/login')) {
+        console.log('Redirecting authenticated user to home')
+        window.location.replace('/')
+      } else if (!user && !currentPath.includes('/login')) {
+        console.log('Redirecting unauthenticated user to login')
+        window.location.replace('/login')
+      } else {
+        redirecting = false
+      }
+    }
 
     // Initialize auth state
     const initializeAuth = async () => {
@@ -53,18 +69,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         console.log('Session retrieved:', session ? 'exists' : 'none')
         if (mounted) {
+          const user = session?.user ?? null
           setState(prev => ({
             ...prev,
-            user: session?.user ?? null,
+            user,
             loading: false,
             initialized: true
           }))
-
-          // If we have a session and we're on the login page, redirect to home
-          if (session?.user && window.location.pathname.includes('/login')) {
-            console.log('Redirecting authenticated user from login to home')
-            window.location.href = '/'
-          }
+          handleRedirect(user)
         }
       } catch (error) {
         console.error('Auth initialization error:', error)
@@ -85,21 +97,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } = supabase.auth.onAuthStateChange(async (event, session) => {
       console.log('Auth state changed:', event, session ? 'session exists' : 'no session')
       if (mounted) {
+        const user = session?.user ?? null
         setState(prev => ({
           ...prev,
-          user: session?.user ?? null,
+          user,
           loading: false,
           initialized: true
         }))
-
-        // Handle auth state changes
-        if (event === 'SIGNED_IN') {
-          console.log('User signed in, redirecting to home')
-          window.location.href = '/'
-        } else if (event === 'SIGNED_OUT') {
-          console.log('User signed out, redirecting to login')
-          window.location.href = '/login'
-        }
+        handleRedirect(user)
       }
     })
 
@@ -124,7 +129,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         throw error
       }
       console.log('Sign in successful:', data.user?.email)
-      // Redirect will be handled by onAuthStateChange
     } catch (error) {
       console.error('Sign in error:', error)
       setState(prev => ({ ...prev, error: error as AuthError }))
@@ -144,7 +148,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         throw error
       }
       console.log('Sign out successful')
-      // Redirect will be handled by onAuthStateChange
     } catch (error) {
       console.error('Sign out error:', error)
       setState(prev => ({ ...prev, error: error as AuthError }))

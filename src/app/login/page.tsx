@@ -1,25 +1,14 @@
 'use client'
 
 import { useAuth } from '@/contexts/AuthContext'
-import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 
 export default function LoginPage() {
-  const router = useRouter()
   const { user, loading, error: authError, signIn } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [localError, setLocalError] = useState<string | null>(null)
-
-  useEffect(() => {
-    console.log('Login page mounted, auth state:', { user, loading })
-    
-    if (!loading && user) {
-      console.log('User is authenticated, redirecting to home')
-      window.location.href = '/'
-    }
-  }, [user, loading])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -39,26 +28,14 @@ export default function LoginPage() {
   }
 
   // Show loading spinner while checking auth state
-  if (loading) {
-    console.log('Showing loading spinner')
+  if (loading || user) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="flex flex-col items-center space-y-4">
           <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary"></div>
-          <p className="text-sm text-gray-500 dark:text-gray-400">Checking authentication...</p>
-        </div>
-      </div>
-    )
-  }
-
-  // Don't show login form if user is already authenticated
-  if (user) {
-    console.log('User is authenticated, showing redirect spinner')
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="flex flex-col items-center space-y-4">
-          <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary"></div>
-          <p className="text-sm text-gray-500 dark:text-gray-400">Redirecting to home page...</p>
+          <p className="text-sm text-gray-500 dark:text-gray-400">
+            {loading ? 'Checking authentication...' : 'Redirecting...'}
+          </p>
         </div>
       </div>
     )
