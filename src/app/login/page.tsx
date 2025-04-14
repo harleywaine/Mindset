@@ -2,7 +2,7 @@
 
 import { useSearchParams } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
-import { useState, useEffect, useRef } from 'react'
+import { useState } from 'react'
 import Link from 'next/link'
 
 export default function LoginPage() {
@@ -12,23 +12,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [isLoading, setIsLoading] = useState(false)
-  const hasRedirected = useRef(false)
-
-  // Handle redirect when user is authenticated
-  useEffect(() => {
-    // Only redirect if we have both user and session, and haven't redirected yet
-    if (user && session?.access_token && !hasRedirected.current) {
-      hasRedirected.current = true
-      console.log('Redirecting with session:', {
-        userEmail: user.email,
-        hasSession: !!session,
-        accessToken: !!session.access_token
-      })
-      const redirectTo = searchParams.get('redirectTo')
-      const targetPath = redirectTo ? decodeURIComponent(redirectTo) : '/'
-      window.location.replace(targetPath) // Using replace instead of href to prevent history stacking
-    }
-  }, [user, session, searchParams])
+  const [isRedirecting, setIsRedirecting] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -41,11 +25,25 @@ export default function LoginPage() {
       if (signInError) {
         throw signInError
       }
+
+      // Set redirecting state
+      setIsRedirecting(true)
+
+      // Wait for a moment to ensure session is established
+      await new Promise(resolve => setTimeout(resolve, 1000))
+
+      // Get redirect path
+      const redirectTo = searchParams.get('redirectTo')
+      const targetPath = redirectTo ? decodeURIComponent(redirectTo) : '/'
+      
+      // Perform redirect
+      window.location.replace(targetPath)
       
     } catch (err: any) {
       console.error('Sign in error:', err)
       setError(err.message || 'Failed to sign in')
       setIsLoading(false)
+      setIsRedirecting(false)
     }
   }
 
@@ -58,8 +56,20 @@ export default function LoginPage() {
     )
   }
 
-  // If already authenticated and waiting for redirect, show message
-  if (user && session?.access_token) {
+  // Show redirect state
+  if (isRedirecting) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-900">
+        <div className="text-white text-lg">Redirecting to home...</div>
+      </div>
+    )
+  }
+
+  // If already authenticated, redirect immediately
+  if (user && session?.access_token && !isRedirecting) {
+    const redirectTo = searchParams.get('redirectTo')
+    const targetPath = redirectTo ? decodeURIComponent(redirectTo) : '/'
+    window.location.replace(targetPath)
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-900">
         <div className="text-white text-lg">Redirecting...</div>
@@ -118,10 +128,10 @@ export default function LoginPage() {
           <div>
             <button
               type="submit"
-              disabled={isLoading || loading}
+              disabled={isLoading || loading || isRedirecting}
               className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {isLoading || loading ? 'Signing in...' : 'Sign in'}
+              {isLoading || loading ? 'Signing in...' : isRedirecting ? 'Redirecting...' : 'Sign in'}
             </button>
           </div>
         </form>
