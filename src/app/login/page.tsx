@@ -16,20 +16,27 @@ export default function LoginPage() {
   const hasRedirected = useRef(false)
 
   useEffect(() => {
-    if (!loading && user && !hasRedirected.current) {
-      hasRedirected.current = true
-      const redirectTo = searchParams.get('redirectTo')
-      const baseUrl = window.location.origin
-      const targetPath = redirectTo ? decodeURIComponent(redirectTo) : '/home'
-      const fullUrl = new URL(targetPath, baseUrl).toString()
-      
-      console.log('Auth state:', { loading, user: user?.email })
-      console.log('Redirecting to full URL:', fullUrl)
-      
-      // Use replace to prevent back button from returning to login
-      router.replace(fullUrl)
+    const handleRedirect = async () => {
+      if (!loading && user && !hasRedirected.current) {
+        hasRedirected.current = true
+        const redirectTo = searchParams.get('redirectTo')
+        const baseUrl = window.location.origin
+        const targetPath = redirectTo ? decodeURIComponent(redirectTo) : '/'
+        
+        console.log('Auth state:', { loading, user: user?.email })
+        console.log('Current URL:', window.location.href)
+        console.log('Target path:', targetPath)
+        
+        // Small delay to ensure auth state is settled
+        await new Promise(resolve => setTimeout(resolve, 100))
+        
+        // Force navigation to the target URL
+        window.location.href = targetPath.startsWith('http') ? targetPath : `${baseUrl}${targetPath}`
+      }
     }
-  }, [user, loading, searchParams, router])
+
+    handleRedirect()
+  }, [user, loading, searchParams])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
