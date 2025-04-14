@@ -18,9 +18,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [session, setSession] = useState<Session | null>(null)
   const [loading, setLoading] = useState(true)
+  const [initialized, setInitialized] = useState(false)
 
   // Handle auth state updates
   const handleAuthStateChange = useCallback(async (_event: string, newSession: Session | null) => {
+    if (!initialized) return
+    
     try {
       if (newSession?.user.id !== user?.id) {
         setSession(newSession)
@@ -29,11 +32,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch (error) {
       console.warn('Error handling auth state change:', error)
     }
-  }, [user?.id])
+  }, [user?.id, initialized])
 
   // Initialize auth state
   useEffect(() => {
     let mounted = true
+    let retryCount = 0
+    const maxRetries = 3
 
     const initializeAuth = async () => {
       try {
@@ -44,24 +49,36 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setSession(initialSession)
           setUser(initialSession?.user ?? null)
           setLoading(false)
+          setInitialized(true)
         }
       } catch (error) {
         console.warn('Error initializing auth:', error)
-        if (mounted) {
+        if (mounted && retryCount < maxRetries) {
+          retryCount++
+          // Exponential backoff for retries
+          setTimeout(initializeAuth, Math.pow(2, retryCount) * 1000)
+        } else if (mounted) {
           setLoading(false)
+          setInitialized(true)
         }
       }
     }
 
-    // Set up auth state listener
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(handleAuthStateChange)
-
     // Initialize
     initializeAuth()
 
+    // Set up auth state listener only after initialization
+    let subscription: { unsubscribe: () => void } | null = null
+    if (initialized) {
+      const { data } = supabase.auth.onAuthStateChange(handleAuthStateChange)
+      subscription = data.subscription
+    }
+
     return () => {
       mounted = false
-      subscription.unsubscribe()
+      if (subscription) {
+        subscription.unsubscribe()
+      }
     }
   }, [handleAuthStateChange])
 
@@ -73,6 +90,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       })
       
       if (error) throw error
+
+      // Force a page reload after successful sign-in
+      if (data?.user) {
+        window.location.href = '/'
+        return { error: null, data }
+      }
       
       return { error: null, data }
     } catch (error: any) {
@@ -84,6 +107,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signOut = async () => {
     try {
       await supabase.auth.signOut()
+      window.location.href = '/login'
     } catch (error) {
       console.warn('Sign out error:', error)
     }
@@ -106,4 +130,5 @@ export function useAuth() {
     throw new Error('useAuth must be used within an AuthProvider')
   }
   return context
+} 
 } 
