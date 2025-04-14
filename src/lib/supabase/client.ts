@@ -1,54 +1,52 @@
 import { createClient } from '@supabase/supabase-js'
+import Cookies from 'js-cookie'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 
-// Create a custom storage implementation that works with privacy-focused browsers
-const createCustomStorage = () => {
-  try {
-    return {
-      getItem: (key: string) => {
-        try {
-          const item = window.sessionStorage.getItem(key)
-          return item
-        } catch {
-          return null
-        }
-      },
-      setItem: (key: string, value: string) => {
-        try {
-          window.sessionStorage.setItem(key, value)
-        } catch {
-          console.warn('Session storage not available')
-        }
-      },
-      removeItem: (key: string) => {
-        try {
-          window.sessionStorage.removeItem(key)
-        } catch {
-          console.warn('Session storage not available')
-        }
+// Create a cookie-based storage implementation
+const createCookieStorage = () => {
+  const STORAGE_KEY = 'sb-auth-token'
+  const COOKIE_OPTIONS = {
+    expires: 7, // 7 days
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'Lax' as const,
+    path: '/'
+  }
+
+  return {
+    getItem: (key: string) => {
+      try {
+        return Cookies.get(key) || null
+      } catch {
+        return null
       }
-    }
-  } catch {
-    // Fallback for server-side rendering
-    return {
-      getItem: () => null,
-      setItem: () => {},
-      removeItem: () => {}
+    },
+    setItem: (key: string, value: string) => {
+      try {
+        Cookies.set(key, value, COOKIE_OPTIONS)
+      } catch (error) {
+        console.warn('Cookie storage error:', error)
+      }
+    },
+    removeItem: (key: string) => {
+      try {
+        Cookies.remove(key, { path: '/' })
+      } catch (error) {
+        console.warn('Cookie removal error:', error)
+      }
     }
   }
 }
 
-// Initialize Supabase with session storage and better config for Vercel
+// Initialize Supabase with cookie storage and minimal config
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
-    storage: createCustomStorage(),
+    storage: createCookieStorage(),
     persistSession: true,
-    detectSessionInUrl: true,
-    flowType: 'pkce',
+    detectSessionInUrl: false, // Disable URL detection to prevent redirect loops
     autoRefreshToken: true,
-    debug: process.env.NODE_ENV === 'development'
+    flowType: 'implicit' // Use implicit flow instead of PKCE for better browser support
   },
   global: {
     headers: {

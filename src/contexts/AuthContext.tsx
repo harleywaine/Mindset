@@ -35,12 +35,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Handle auth state initialization and changes
   useEffect(() => {
     let mounted = true
-    console.log('Initializing auth...')
 
     // Initialize auth state
     const initializeAuth = async () => {
       try {
-        console.log('Getting session...')
         const { data: { session }, error: sessionError } = await supabase.auth.getSession()
         
         if (sessionError) {
@@ -56,7 +54,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           return
         }
 
-        console.log('Session retrieved:', session ? 'exists' : 'none')
         if (mounted) {
           setState(prev => ({
             ...prev,
@@ -81,8 +78,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Set up auth state change listener
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log('Auth state changed:', event, session ? 'session exists' : 'no session')
+    } = supabase.auth.onAuthStateChange(async (_event, session) => {
       if (mounted) {
         setState(prev => ({
           ...prev,
@@ -98,64 +94,61 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     // Cleanup
     return () => {
-      console.log('Cleaning up auth...')
       mounted = false
       subscription.unsubscribe()
     }
   }, [])
 
-  // Handle route protection
+  // Handle route protection with debounce
   useEffect(() => {
     if (!state.initialized || state.loading) return
 
     const isPublicPath = PUBLIC_PATHS.some(path => pathname?.startsWith(path))
-    
-    if (state.user && isPublicPath) {
-      console.log('Authenticated user accessing public path, redirecting to home')
-      router.replace('/')
-    } else if (!state.user && !isPublicPath && pathname !== '/') {
-      console.log('Unauthenticated user accessing protected path, redirecting to login')
-      router.replace('/login')
+    const shouldRedirect = state.user && isPublicPath ? '/' : !state.user && !isPublicPath && pathname !== '/' ? '/login' : null
+
+    if (shouldRedirect) {
+      const timeoutId = setTimeout(() => {
+        router.push(shouldRedirect)
+      }, 100)
+      return () => clearTimeout(timeoutId)
     }
   }, [state.user, state.initialized, state.loading, pathname, router])
 
   const signIn = async (email: string, password: string) => {
     try {
-      console.log('Attempting sign in...')
       setState(prev => ({ ...prev, loading: true, error: null }))
       const { data, error } = await supabase.auth.signInWithPassword({ email, password })
-      if (error) {
-        console.error('Sign in error:', error)
-        throw error
-      }
-      console.log('Sign in successful:', data.user?.email)
-      router.refresh()
+      if (error) throw error
+      
+      // Let the auth state listener handle the update
+      setState(prev => ({ ...prev, loading: false }))
     } catch (error) {
       console.error('Sign in error:', error)
-      setState(prev => ({ ...prev, error: error as AuthError }))
+      setState(prev => ({
+        ...prev,
+        error: error as AuthError,
+        loading: false
+      }))
       throw error
-    } finally {
-      setState(prev => ({ ...prev, loading: false }))
     }
   }
 
   const signOut = async () => {
     try {
-      console.log('Attempting sign out...')
       setState(prev => ({ ...prev, loading: true, error: null }))
       const { error } = await supabase.auth.signOut()
-      if (error) {
-        console.error('Sign out error:', error)
-        throw error
-      }
-      console.log('Sign out successful')
-      router.refresh()
+      if (error) throw error
+      
+      // Let the auth state listener handle the update
+      setState(prev => ({ ...prev, loading: false }))
     } catch (error) {
       console.error('Sign out error:', error)
-      setState(prev => ({ ...prev, error: error as AuthError }))
+      setState(prev => ({
+        ...prev,
+        error: error as AuthError,
+        loading: false
+      }))
       throw error
-    } finally {
-      setState(prev => ({ ...prev, loading: false }))
     }
   }
 
