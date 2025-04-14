@@ -6,37 +6,34 @@ import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 
 export default function LoginPage() {
-  const { signIn, user, loading } = useAuth()
+  const { signIn, user, session, loading } = useAuth()
   const router = useRouter()
   const searchParams = useSearchParams()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [isLoading, setIsLoading] = useState(false)
-  const hasRedirected = useRef(false)
+  const redirectAttempts = useRef(0)
 
   useEffect(() => {
-    const handleRedirect = async () => {
-      if (!loading && user && !hasRedirected.current) {
-        hasRedirected.current = true
+    // Only attempt redirect if we have a valid session
+    if (!loading && session?.access_token && user?.email && redirectAttempts.current < 3) {
+      redirectAttempts.current += 1
+      console.log('Attempting redirect:', {
+        attempt: redirectAttempts.current,
+        hasSession: !!session,
+        userEmail: user.email
+      })
+
+      try {
         const redirectTo = searchParams.get('redirectTo')
-        const baseUrl = window.location.origin
-        const targetPath = redirectTo ? decodeURIComponent(redirectTo) : '/'
-        
-        console.log('Auth state:', { loading, user: user?.email })
-        console.log('Current URL:', window.location.href)
-        console.log('Target path:', targetPath)
-        
-        // Small delay to ensure auth state is settled
-        await new Promise(resolve => setTimeout(resolve, 100))
-        
-        // Force navigation to the target URL
-        window.location.href = targetPath.startsWith('http') ? targetPath : `${baseUrl}${targetPath}`
+        // Always redirect to home for now to break potential loops
+        router.replace('/')
+      } catch (error) {
+        console.error('Redirect error:', error)
       }
     }
-
-    handleRedirect()
-  }, [user, loading, searchParams])
+  }, [loading, session, user, router, searchParams])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -66,7 +63,7 @@ export default function LoginPage() {
   }
 
   // Show redirect message if authenticated
-  if (!loading && user) {
+  if (!loading && session?.access_token) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#1A1D1F]">
         <div className="text-white text-lg">Redirecting to home...</div>
