@@ -51,7 +51,7 @@ export default function Home() {
   ]
 
   return (
-    <main className="min-h-screen p-6">
+    <main>
       {/* Header */}
       <div className="mb-12">
         <h1 className="text-4xl font-bold text-white mb-2">Welcome to Meditation App</h1>
@@ -89,14 +89,14 @@ export default function Home() {
                   <item.Icon size={36} weight="light" className="text-white" />
                 </div>
               </div>
-              <span className="text-lg text-[#6366F1] group-hover:text-[#6366F1]/80 transition-colors">{item.name}</span>
+              <span className="text-lg text-white group-hover:text-[#2B6D79] transition-colors">{item.name}</span>
             </Link>
           ))}
         </div>
       </section>
 
       {/* Foundations Section */}
-      <section>
+      <section className="mb-24">
         <h2 className="text-2xl font-semibold text-white mb-8">Foundations</h2>
         <div className="space-y-4 max-w-2xl">
           {foundations.map((item) => (
