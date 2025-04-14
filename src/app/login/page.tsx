@@ -13,18 +13,15 @@ export default function LoginPage() {
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [isLoading, setIsLoading] = useState(false)
-  const [isRedirecting, setIsRedirecting] = useState(false)
 
   useEffect(() => {
     if (!loading && user) {
-      setIsRedirecting(true)
-      console.log('Redirecting to home, user:', user.email)
       const redirectTo = searchParams.get('redirectTo')
       const targetPath = redirectTo ? decodeURIComponent(redirectTo) : '/'
       console.log('Redirecting to:', targetPath)
-      router.replace(targetPath)
+      window.location.href = targetPath // Use window.location for hard redirect
     }
-  }, [user, loading, router, searchParams])
+  }, [user, loading, searchParams])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -40,23 +37,20 @@ export default function LoginPage() {
     } catch (error) {
       console.error('Login error:', error)
       setError('Invalid email or password')
-    } finally {
       setIsLoading(false)
     }
   }
 
-  // Show loading state during auth check or redirect
-  if (loading || isRedirecting) {
+  // Show loading state during auth check
+  if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#1A1D1F]">
-        <div className="text-white text-lg">
-          {isRedirecting ? 'Redirecting...' : 'Loading...'}
-        </div>
+        <div className="text-white text-lg">Loading...</div>
       </div>
     )
   }
 
-  // Don't show the form if we're authenticated
+  // Show redirect message if authenticated
   if (!loading && user) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#1A1D1F]">
