@@ -40,21 +40,20 @@ export async function middleware(request: NextRequest) {
 
   // Get the pathname without the route group prefix
   const pathname = request.nextUrl.pathname
-  const pathWithoutGroup = pathname.replace(/^\/(auth)/, '')
+
+  // Allow public paths and static assets
+  if (PUBLIC_PATHS.includes(pathname) || pathname.startsWith('/_next')) {
+    return response
+  }
 
   // Refresh session if expired - required for Server Components
   const { data: { session } } = await supabase.auth.getSession()
 
   // If the user is not signed in and the path is not public, redirect to login
-  if (!session && !PUBLIC_PATHS.includes(pathWithoutGroup)) {
+  if (!session) {
     const redirectUrl = new URL('/login', request.url)
-    redirectUrl.searchParams.set('redirectTo', request.nextUrl.pathname)
+    redirectUrl.searchParams.set('redirectTo', pathname)
     return NextResponse.redirect(redirectUrl)
-  }
-
-  // If the user is signed in and trying to access auth pages, redirect to home
-  if (session && PUBLIC_PATHS.includes(pathWithoutGroup)) {
-    return NextResponse.redirect(new URL('/', request.url))
   }
 
   return response
