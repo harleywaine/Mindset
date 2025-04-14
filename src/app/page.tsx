@@ -1,6 +1,6 @@
 'use client'
 
-import { Lightning, BatteryFull, ShieldCheck } from '@phosphor-icons/react'
+import { Lightning, BatteryFull, ShieldCheck, Zap, Battery, Shield } from '@phosphor-icons/react'
 import Link from 'next/link'
 import LessonCard from '@/components/cards/LessonCard'
 
@@ -44,70 +44,42 @@ export default function Home() {
     }
   ]
 
-  const switches = [
-    { name: 'Switch On', Icon: Lightning, href: '/switch-on' },
-    { name: 'Switch Off', Icon: BatteryFull, href: '/switch-off' },
-    { name: 'Take Control', Icon: ShieldCheck, href: '/take-control' },
-  ]
-
   return (
-    <main>
-      {/* Header */}
-      <div className="mb-12">
-        <h1 className="text-4xl font-bold text-white mb-2">Welcome to Meditation App</h1>
-        <p className="text-xl text-gray-400">Let's make some progress</p>
+    <main className="flex flex-col gap-8 p-4 pb-24">
+      <div className="space-y-2">
+        <h1 className="text-4xl font-bold text-white">Welcome to<br />Meditation App</h1>
+        <p className="text-gray-400">Let's make some progress</p>
       </div>
 
-      {/* Switches Section */}
-      <section className="mb-12">
-        <h2 className="text-2xl font-semibold text-white mb-8">Flick the switch</h2>
-        <div className="flex justify-between max-w-xl">
-          {switches.map((item) => (
-            <Link
-              key={item.name}
-              href={item.href}
-              className="flex flex-col items-center group"
-            >
-              <div className="w-20 h-20 relative mb-3">
-                <svg
-                  viewBox="0 0 64 64"
-                  className="w-full h-full absolute"
-                  style={{
-                    filter: 'drop-shadow(0px 2.8px 9.8px rgba(0, 0, 0, 0.25))'
-                  }}
-                >
-                  <circle
-                    cx="32"
-                    cy="32"
-                    r="30"
-                    fill="#2B6D79"
-                    stroke="#313336"
-                    strokeWidth="4"
-                  />
-                </svg>
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <item.Icon size={36} weight="light" className="text-white" />
-                </div>
-              </div>
-              <span className="text-lg text-white group-hover:text-[#2B6D79] transition-colors">{item.name}</span>
-            </Link>
-          ))}
+      <section className="space-y-4">
+        <h2 className="text-2xl font-bold text-white">Flick the switch</h2>
+        <div className="grid grid-cols-3 gap-4">
+          <Link href="/switch/on" className="flex flex-col items-center gap-2">
+            <div className="w-16 h-16 rounded-full bg-[#2B6D79] flex items-center justify-center">
+              <Zap size={32} className="text-white" />
+            </div>
+            <span className="text-white text-sm">Switch On</span>
+          </Link>
+          <Link href="/switch/off" className="flex flex-col items-center gap-2">
+            <div className="w-16 h-16 rounded-full bg-[#2B6D79] flex items-center justify-center">
+              <Battery size={32} className="text-white" />
+            </div>
+            <span className="text-white text-sm">Switch Off</span>
+          </Link>
+          <Link href="/switch/control" className="flex flex-col items-center gap-2">
+            <div className="w-16 h-16 rounded-full bg-[#2B6D79] flex items-center justify-center">
+              <Shield size={32} className="text-white" />
+            </div>
+            <span className="text-white text-sm">Take Control</span>
+          </Link>
         </div>
       </section>
 
-      {/* Foundations Section */}
-      <section className="mb-24">
-        <h2 className="text-2xl font-semibold text-white mb-8">Foundations</h2>
-        <div className="space-y-4 max-w-2xl">
-          {foundations.map((item) => (
-            <LessonCard
-              key={item.id}
-              title={item.title}
-              duration={item.duration}
-              type={item.type}
-              id={item.id}
-              completed={item.completed}
-            />
+      <section className="space-y-4">
+        <h2 className="text-2xl font-bold text-white">Foundations</h2>
+        <div className="space-y-3">
+          {foundations.map((track) => (
+            <LessonCard key={track.id} {...track} />
           ))}
         </div>
       </section>
