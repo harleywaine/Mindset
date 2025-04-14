@@ -1,8 +1,9 @@
 'use client'
 
-import React, { createContext, useContext, useEffect, useState, useRef } from 'react'
+import React, { createContext, useContext, useEffect, useState } from 'react'
 import { User, AuthError } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase/client'
+import { usePathname, useRouter } from 'next/navigation'
 
 interface AuthState {
   user: User | null
@@ -18,6 +19,8 @@ interface AuthContextType extends AuthState {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
+const PUBLIC_PATHS = ['/login', '/signup', '/reset-password']
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<AuthState>({
     user: null,
@@ -25,7 +28,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     error: null,
     initialized: false
   })
-  const redirectingRef = useRef(false)
+  
+  const router = useRouter()
+  const pathname = usePathname()
 
   // Handle auth state initialization and changes
   useEffect(() => {
@@ -99,25 +104,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [])
 
-  // Handle redirects in a separate effect
+  // Handle route protection
   useEffect(() => {
-    if (!state.initialized || state.loading || redirectingRef.current) {
-      return
-    }
+    if (!state.initialized || state.loading) return
 
-    const currentPath = window.location.pathname
-    const isLoginPage = currentPath.includes('/login')
+    const isPublicPath = PUBLIC_PATHS.some(path => pathname?.startsWith(path))
     
-    if (state.user && isLoginPage) {
-      console.log('Redirecting authenticated user to home')
-      redirectingRef.current = true
-      window.location.href = '/'
-    } else if (!state.user && !isLoginPage && currentPath !== '/') {
-      console.log('Redirecting unauthenticated user to login')
-      redirectingRef.current = true
-      window.location.href = '/login'
+    if (state.user && isPublicPath) {
+      console.log('Authenticated user accessing public path, redirecting to home')
+      router.replace('/')
+    } else if (!state.user && !isPublicPath && pathname !== '/') {
+      console.log('Unauthenticated user accessing protected path, redirecting to login')
+      router.replace('/login')
     }
-  }, [state.user, state.initialized, state.loading])
+  }, [state.user, state.initialized, state.loading, pathname, router])
 
   const signIn = async (email: string, password: string) => {
     try {
@@ -129,6 +129,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         throw error
       }
       console.log('Sign in successful:', data.user?.email)
+      router.refresh()
     } catch (error) {
       console.error('Sign in error:', error)
       setState(prev => ({ ...prev, error: error as AuthError }))
@@ -148,6 +149,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         throw error
       }
       console.log('Sign out successful')
+      router.refresh()
     } catch (error) {
       console.error('Sign out error:', error)
       setState(prev => ({ ...prev, error: error as AuthError }))
@@ -157,17 +159,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
-  // Add debug output for state changes
-  useEffect(() => {
-    console.log('Auth state updated:', {
-      user: state.user ? 'exists' : 'null',
-      loading: state.loading,
-      initialized: state.initialized,
-      error: state.error
-    })
-  }, [state])
-
-  // Don't render children until auth is initialized
   if (!state.initialized) {
     return (
       <div className="min-h-screen flex items-center justify-center">

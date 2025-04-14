@@ -3,74 +3,56 @@ import { createClient } from '@supabase/supabase-js'
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 
-// Create a robust storage wrapper with initialization checks
-const createStorage = () => {
-  let storage: Storage | null = null
-  
-  // Initialize storage safely
-  if (typeof window !== 'undefined') {
-    try {
-      // Test if localStorage is actually available
-      localStorage.setItem('supabase.test-ls', 'test')
-      localStorage.removeItem('supabase.test-ls')
-      storage = window.localStorage
-    } catch {
-      console.warn('localStorage not available, falling back to in-memory storage')
-      // Fallback to in-memory storage
-      const memoryStorage: { [key: string]: string } = {}
-      storage = {
-        getItem: (key: string) => memoryStorage[key] || null,
-        setItem: (key: string, value: string) => { memoryStorage[key] = value },
-        removeItem: (key: string) => { delete memoryStorage[key] },
-        clear: () => { Object.keys(memoryStorage).forEach(key => delete memoryStorage[key]) },
-        key: (index: number) => Object.keys(memoryStorage)[index] || null,
-        length: 0
+// Create a custom storage implementation that works with privacy-focused browsers
+const createCustomStorage = () => {
+  try {
+    return {
+      getItem: (key: string) => {
+        try {
+          const item = window.sessionStorage.getItem(key)
+          return item
+        } catch {
+          return null
+        }
+      },
+      setItem: (key: string, value: string) => {
+        try {
+          window.sessionStorage.setItem(key, value)
+        } catch {
+          console.warn('Session storage not available')
+        }
+      },
+      removeItem: (key: string) => {
+        try {
+          window.sessionStorage.removeItem(key)
+        } catch {
+          console.warn('Session storage not available')
+        }
       }
     }
-  }
-
-  return {
-    getItem: (key: string): string => {
-      try {
-        const item = storage?.getItem(key)
-        return item || ''
-      } catch (error) {
-        console.warn('Error reading from storage:', error)
-        return ''
-      }
-    },
-    setItem: (key: string, value: string) => {
-      try {
-        storage?.setItem(key, value)
-      } catch (error) {
-        console.warn('Error writing to storage:', error)
-      }
-    },
-    removeItem: (key: string) => {
-      try {
-        storage?.removeItem(key)
-      } catch (error) {
-        console.warn('Error removing from storage:', error)
-      }
-    },
-    clear: () => {
-      try {
-        storage?.clear()
-      } catch (error) {
-        console.warn('Error clearing storage:', error)
-      }
+  } catch {
+    // Fallback for server-side rendering
+    return {
+      getItem: () => null,
+      setItem: () => {},
+      removeItem: () => {}
     }
   }
 }
 
-// Initialize Supabase with enhanced config
+// Initialize Supabase with session storage and better config for Vercel
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
-    storage: createStorage(),
+    storage: createCustomStorage(),
     persistSession: true,
     detectSessionInUrl: true,
-    autoRefreshToken: true,
     flowType: 'pkce',
-    debug: true // Enable debug mode temporarily to track auth issues
+    autoRefreshToken: true,
+    debug: process.env.NODE_ENV === 'development'
+  },
+  global: {
+    headers: {
+      'X-Client-Info': 'meditation-app'
+    }
   }
 }) 
