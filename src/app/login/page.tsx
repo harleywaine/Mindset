@@ -24,7 +24,7 @@ function LoginForm() {
     try {
       const { error } = await signIn(email, password)
       if (error) throw error
-      router.push('/dashboard')
+      router.push('/')
     } catch (error) {
       setError('Invalid email or password')
     } finally {
