@@ -6,65 +6,51 @@ const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 // Memory fallback for when storage is not available
 const memoryStorage = new Map<string, string>()
 
-interface StorageWrapper {
-  type: 'memory' | 'localStorage' | 'sessionStorage'
-  storage: Storage | Map<string, string>
-}
+// Pre-initialize cache with empty values
+const CACHE_KEYS = [
+  'supabase.auth.token',
+  'supabase.auth.refreshToken',
+  'supabase.auth.user'
+]
 
 // Initialize storage with default values
-const initializeStorage = (): StorageWrapper => {
-  if (typeof window === 'undefined') {
-    return {
-      type: 'memory',
-      storage: memoryStorage
-    }
+const initializeStorage = () => {
+  const storage = typeof window !== 'undefined' ? window.localStorage : null
+  
+  if (!storage) {
+    // Initialize memory storage with empty values
+    CACHE_KEYS.forEach(key => memoryStorage.set(key, ''))
+    return memoryStorage
   }
 
   try {
-    // Test if localStorage is available
-    window.localStorage.setItem('supabase.test-storage', 'initialized')
-    window.localStorage.removeItem('supabase.test-storage')
-    return {
-      type: 'localStorage',
-      storage: window.localStorage
-    }
+    // Pre-initialize cache keys
+    CACHE_KEYS.forEach(key => {
+      if (!storage.getItem(key)) {
+        storage.setItem(key, '')
+      }
+    })
+    return storage
   } catch (e) {
-    try {
-      // Fallback to sessionStorage
-      window.sessionStorage.setItem('supabase.test-storage', 'initialized')
-      window.sessionStorage.removeItem('supabase.test-storage')
-      return {
-        type: 'sessionStorage',
-        storage: window.sessionStorage
-      }
-    } catch (e) {
-      console.warn('Browser storage not available, falling back to memory storage')
-      return {
-        type: 'memory',
-        storage: memoryStorage
-      }
-    }
+    console.warn('Storage not available, using memory storage')
+    CACHE_KEYS.forEach(key => memoryStorage.set(key, ''))
+    return memoryStorage
   }
 }
 
 // Initialize storage early
-const { type: storageType, storage: storageImpl } = initializeStorage()
-console.log('[Storage Debug] Using storage type:', storageType)
+const storageImpl = initializeStorage()
+console.log('[Storage Debug] Storage initialized')
 
 // Enhanced storage implementation with memory fallback
 const enhancedStorage = {
   getItem: (key: string): string | null => {
     try {
-      if (storageType === 'memory') {
+      if (storageImpl instanceof Map) {
         return memoryStorage.get(key) || null
       }
-      const storage = storageImpl as Storage
-      const value = storage.getItem(key)
-      if (value) {
-        // Ensure memory backup is in sync
-        memoryStorage.set(key, value)
-      }
-      return value
+      const value = storageImpl.getItem(key)
+      return value || memoryStorage.get(key) || null
     } catch (error) {
       console.warn('[Storage Debug] Error getting item:', key, error)
       return memoryStorage.get(key) || null
@@ -72,31 +58,24 @@ const enhancedStorage = {
   },
   setItem: (key: string, value: string): void => {
     try {
-      if (storageType === 'memory') {
-        memoryStorage.set(key, value)
-        return
-      }
-      const storage = storageImpl as Storage
-      storage.setItem(key, value)
-      // Always keep memory backup
+      // Always set in memory first
       memoryStorage.set(key, value)
+      
+      if (!(storageImpl instanceof Map)) {
+        storageImpl.setItem(key, value)
+      }
     } catch (error) {
       console.warn('[Storage Debug] Error setting item:', key, error)
-      memoryStorage.set(key, value)
     }
   },
   removeItem: (key: string): void => {
     try {
-      if (storageType === 'memory') {
-        memoryStorage.delete(key)
-        return
-      }
-      const storage = storageImpl as Storage
-      storage.removeItem(key)
       memoryStorage.delete(key)
+      if (!(storageImpl instanceof Map)) {
+        storageImpl.removeItem(key)
+      }
     } catch (error) {
       console.warn('[Storage Debug] Error removing item:', key, error)
-      memoryStorage.delete(key)
     }
   },
   length: 0,
