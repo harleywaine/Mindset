@@ -19,6 +19,7 @@ const initializedKeys = new Set<string>()
 // Memory storage implementation
 class MemoryStorage {
   private store: Map<string, string>
+  private defaultLocation: string | null = null
   
   constructor() {
     this.store = new Map()
@@ -26,31 +27,54 @@ class MemoryStorage {
   }
 
   private initializeDefaults() {
+    // Initialize auth keys
     AUTH_STORAGE_KEYS.forEach(key => {
       if (!this.store.has(key)) {
         this.store.set(key, '')
-        initializedKeys.add(key)
       }
     })
+
+    // Set default saving location
+    if (!this.defaultLocation) {
+      try {
+        if (typeof window !== 'undefined') {
+          this.defaultLocation = window.location.origin
+        }
+      } catch (e) {
+        this.defaultLocation = 'default'
+      }
+      this.store.set('defaultSavingLocation', this.defaultLocation || 'default')
+    }
   }
 
   getItem(key: string) {
-    // Always ensure the key is initialized
+    // Special handling for location-related keys
+    if (key === 'defaultSavingLocation' || key.includes('location')) {
+      return this.defaultLocation || 'default'
+    }
+    
+    // Handle auth keys
     if (!this.store.has(key)) {
       this.store.set(key, '')
-      initializedKeys.add(key)
     }
     return this.store.get(key) || ''
   }
 
   setItem(key: string, value: string) {
+    // Special handling for location-related keys
+    if (key === 'defaultSavingLocation' || key.includes('location')) {
+      this.defaultLocation = value
+    }
     this.store.set(key, value)
-    initializedKeys.add(key)
   }
 
   removeItem(key: string) {
-    // Don't actually remove, just set to empty
-    this.store.set(key, '')
+    // Don't actually remove, just set to empty or default
+    if (key === 'defaultSavingLocation' || key.includes('location')) {
+      this.store.set(key, this.defaultLocation || 'default')
+    } else {
+      this.store.set(key, '')
+    }
   }
 
   clear() {
@@ -71,19 +95,29 @@ class MemoryStorage {
 const createHybridStorage = () => {
   const memoryStore = new MemoryStorage()
   
-  // Initialize storage with empty values
+  // Initialize storage with empty values and location
   const initializeStorage = (storage: Storage | MemoryStorage) => {
+    // Initialize auth keys
     AUTH_STORAGE_KEYS.forEach(key => {
       try {
         const existing = storage.getItem(key)
         if (!existing) {
           storage.setItem(key, '')
         }
-        initializedKeys.add(key)
       } catch (e) {
-        console.warn(`Storage initialization warning for ${key}:`, e)
+        // Ignore initialization errors
       }
     })
+
+    // Initialize location
+    try {
+      if (typeof window !== 'undefined') {
+        const location = window.location.origin
+        storage.setItem('defaultSavingLocation', location)
+      }
+    } catch (e) {
+      storage.setItem('defaultSavingLocation', 'default')
+    }
   }
 
   let primaryStorage: Storage | MemoryStorage = memoryStore
@@ -98,6 +132,7 @@ const createHybridStorage = () => {
         initializeStorage(window.sessionStorage)
         primaryStorage = window.sessionStorage
       } catch (e) {
+        // Fallback to memory storage
         console.warn('Browser storage not available, using memory storage')
       }
     }
@@ -106,94 +141,57 @@ const createHybridStorage = () => {
   return {
     getItem: (key: string): string => {
       try {
-        // Ensure key is initialized
-        if (!initializedKeys.has(key)) {
-          memoryStore.setItem(key, '')
-          if (primaryStorage !== memoryStore) {
-            try {
-              primaryStorage.setItem(key, '')
-            } catch (e) {
-              // Ignore storage errors
-            }
-          }
-          initializedKeys.add(key)
+        // Special handling for location-related keys
+        if (key === 'defaultSavingLocation' || key.includes('location')) {
+          const locationValue = primaryStorage.getItem(key)
+          if (locationValue) return locationValue
+          
+          // Set and return default location
+          const defaultLocation = typeof window !== 'undefined' ? window.location.origin : 'default'
+          primaryStorage.setItem(key, defaultLocation)
+          return defaultLocation
         }
 
-        // Try memory first
-        const memValue = memoryStore.getItem(key)
-        if (memValue) return memValue
+        // Handle other keys
+        const value = primaryStorage.getItem(key)
+        if (value) return value
 
-        // Try primary storage
-        if (primaryStorage !== memoryStore) {
-          try {
-            const value = primaryStorage.getItem(key)
-            if (value) {
-              memoryStore.setItem(key, value)
-              return value
-            }
-          } catch (e) {
-            // Ignore storage errors
-          }
-        }
-
+        // Initialize if not found
+        primaryStorage.setItem(key, '')
         return ''
       } catch (e) {
-        return ''
+        return memoryStore.getItem(key)
       }
     },
     setItem: (key: string, value: string): void => {
       try {
-        memoryStore.setItem(key, value)
-        initializedKeys.add(key)
-        
-        if (primaryStorage !== memoryStore) {
-          try {
-            primaryStorage.setItem(key, value)
-          } catch (e) {
-            // Ignore storage errors
-          }
-        }
+        primaryStorage.setItem(key, value)
       } catch (e) {
-        // Ensure the key is at least initialized
-        memoryStore.setItem(key, '')
-        initializedKeys.add(key)
+        memoryStore.setItem(key, value)
       }
     },
     removeItem: (key: string): void => {
       try {
-        // Don't remove, set to empty string
-        memoryStore.setItem(key, '')
-        if (primaryStorage !== memoryStore) {
-          try {
-            primaryStorage.setItem(key, '')
-          } catch (e) {
-            // Ignore storage errors
-          }
+        // Don't remove location keys, reset to default
+        if (key === 'defaultSavingLocation' || key.includes('location')) {
+          const defaultLocation = typeof window !== 'undefined' ? window.location.origin : 'default'
+          primaryStorage.setItem(key, defaultLocation)
+        } else {
+          primaryStorage.setItem(key, '')
         }
       } catch (e) {
-        // Ensure the key is at least initialized
-        memoryStore.setItem(key, '')
+        memoryStore.removeItem(key)
       }
     },
     length: 0,
     key: () => null,
     clear: () => {
-      // Don't actually clear, just reinitialize
-      AUTH_STORAGE_KEYS.forEach(key => {
-        try {
-          memoryStore.setItem(key, '')
-          if (primaryStorage !== memoryStore) {
-            try {
-              primaryStorage.setItem(key, '')
-            } catch (e) {
-              // Ignore storage errors
-            }
-          }
-          initializedKeys.add(key)
-        } catch (e) {
-          // Ignore errors
-        }
-      })
+      try {
+        // Don't actually clear, reinitialize
+        initializeStorage(primaryStorage)
+      } catch (e) {
+        memoryStore.clear()
+      }
     }
   }
 }
