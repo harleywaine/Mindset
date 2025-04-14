@@ -6,54 +6,96 @@ const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 // Memory fallback for when storage is not available
 const memoryStorage = new Map<string, string>()
 
+interface StorageWrapper {
+  type: 'memory' | 'localStorage' | 'sessionStorage'
+  storage: Storage | Map<string, string>
+}
+
 // Initialize storage with default values
-const initializeStorage = () => {
-  if (typeof window !== 'undefined') {
-    try {
-      // Set a test value to check if storage is working
-      window.sessionStorage.setItem('supabase.test-storage', 'initialized')
-      window.sessionStorage.removeItem('supabase.test-storage')
-      return window.sessionStorage
-    } catch {
-      console.warn('SessionStorage not available, falling back to memory storage')
+const initializeStorage = (): StorageWrapper => {
+  if (typeof window === 'undefined') {
+    return {
+      type: 'memory',
+      storage: memoryStorage
     }
   }
-  return null
+
+  try {
+    // Test if localStorage is available
+    window.localStorage.setItem('supabase.test-storage', 'initialized')
+    window.localStorage.removeItem('supabase.test-storage')
+    return {
+      type: 'localStorage',
+      storage: window.localStorage
+    }
+  } catch (e) {
+    try {
+      // Fallback to sessionStorage
+      window.sessionStorage.setItem('supabase.test-storage', 'initialized')
+      window.sessionStorage.removeItem('supabase.test-storage')
+      return {
+        type: 'sessionStorage',
+        storage: window.sessionStorage
+      }
+    } catch (e) {
+      console.warn('Browser storage not available, falling back to memory storage')
+      return {
+        type: 'memory',
+        storage: memoryStorage
+      }
+    }
+  }
 }
 
 // Initialize storage early
-const storageImpl = initializeStorage()
+const { type: storageType, storage: storageImpl } = initializeStorage()
+console.log('[Storage Debug] Using storage type:', storageType)
 
 // Enhanced storage implementation with memory fallback
 const enhancedStorage = {
-  getItem: (key: string) => {
+  getItem: (key: string): string | null => {
     try {
-      if (storageImpl) {
-        const value = storageImpl.getItem(key)
-        if (value !== null) return value
+      if (storageType === 'memory') {
+        return memoryStorage.get(key) || null
       }
-      return memoryStorage.get(key) || null
-    } catch {
+      const storage = storageImpl as Storage
+      const value = storage.getItem(key)
+      if (value) {
+        // Ensure memory backup is in sync
+        memoryStorage.set(key, value)
+      }
+      return value
+    } catch (error) {
+      console.warn('[Storage Debug] Error getting item:', key, error)
       return memoryStorage.get(key) || null
     }
   },
-  setItem: (key: string, value: string) => {
+  setItem: (key: string, value: string): void => {
     try {
-      if (storageImpl) {
-        storageImpl.setItem(key, value)
+      if (storageType === 'memory') {
+        memoryStorage.set(key, value)
+        return
       }
+      const storage = storageImpl as Storage
+      storage.setItem(key, value)
+      // Always keep memory backup
       memoryStorage.set(key, value)
-    } catch {
+    } catch (error) {
+      console.warn('[Storage Debug] Error setting item:', key, error)
       memoryStorage.set(key, value)
     }
   },
-  removeItem: (key: string) => {
+  removeItem: (key: string): void => {
     try {
-      if (storageImpl) {
-        storageImpl.removeItem(key)
+      if (storageType === 'memory') {
+        memoryStorage.delete(key)
+        return
       }
+      const storage = storageImpl as Storage
+      storage.removeItem(key)
       memoryStorage.delete(key)
-    } catch {
+    } catch (error) {
+      console.warn('[Storage Debug] Error removing item:', key, error)
       memoryStorage.delete(key)
     }
   },
@@ -74,8 +116,10 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   },
   global: {
     headers: {
-      'Cache-Control': 'no-cache',
-      'Pragma': 'no-cache'
+      'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+      'Pragma': 'no-cache',
+      'Expires': '0',
+      'Surrogate-Control': 'no-store'
     }
   }
 }) 
