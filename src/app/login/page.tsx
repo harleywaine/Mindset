@@ -17,9 +17,9 @@ export default function LoginPage() {
     
     if (!loading && user) {
       console.log('User is authenticated, redirecting to home')
-      router.push('/')
+      window.location.href = '/'
     }
-  }, [user, loading, router])
+  }, [user, loading])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -30,7 +30,6 @@ export default function LoginPage() {
       console.log('Attempting to sign in with email:', email)
       setIsSubmitting(true)
       await signIn(email, password)
-      console.log('Sign in successful, waiting for redirect')
     } catch (err) {
       console.error('Login error:', err)
       setLocalError('Failed to sign in. Please check your credentials and try again.')
@@ -59,7 +58,7 @@ export default function LoginPage() {
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="flex flex-col items-center space-y-4">
           <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary"></div>
-          <p className="text-sm text-gray-500 dark:text-gray-400">Redirecting...</p>
+          <p className="text-sm text-gray-500 dark:text-gray-400">Redirecting to home page...</p>
         </div>
       </div>
     )

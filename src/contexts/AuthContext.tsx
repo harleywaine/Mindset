@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react'
 import { User, AuthError } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase/client'
+import { useRouter } from 'next/navigation'
 
 interface AuthState {
   user: User | null
@@ -25,6 +26,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     error: null,
     initialized: false
   })
+  const router = useRouter()
 
   useEffect(() => {
     let mounted = true
@@ -57,6 +59,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             loading: false,
             initialized: true
           }))
+
+          // If we have a session and we're on the login page, redirect to home
+          if (session?.user && window.location.pathname.includes('/login')) {
+            console.log('Redirecting authenticated user from login to home')
+            window.location.href = '/'
+          }
         }
       } catch (error) {
         console.error('Auth initialization error:', error)
@@ -83,6 +91,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           loading: false,
           initialized: true
         }))
+
+        // Handle auth state changes
+        if (event === 'SIGNED_IN') {
+          console.log('User signed in, redirecting to home')
+          window.location.href = '/'
+        } else if (event === 'SIGNED_OUT') {
+          console.log('User signed out, redirecting to login')
+          window.location.href = '/login'
+        }
       }
     })
 
@@ -107,6 +124,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         throw error
       }
       console.log('Sign in successful:', data.user?.email)
+      // Redirect will be handled by onAuthStateChange
     } catch (error) {
       console.error('Sign in error:', error)
       setState(prev => ({ ...prev, error: error as AuthError }))
@@ -126,6 +144,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         throw error
       }
       console.log('Sign out successful')
+      // Redirect will be handled by onAuthStateChange
     } catch (error) {
       console.error('Sign out error:', error)
       setState(prev => ({ ...prev, error: error as AuthError }))
