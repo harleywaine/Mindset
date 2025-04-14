@@ -3,56 +3,58 @@ import { createClient } from '@supabase/supabase-js'
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 
+// Default keys that need to be initialized
+const AUTH_STORAGE_KEYS = [
+  'supabase.auth.token',
+  'supabase.auth.refreshToken',
+  'supabase.auth.user',
+  'supabase.auth.expires_at',
+  'supabase.auth.provider_token',
+  'supabase.auth.provider_refresh_token'
+]
+
+// Global cache to prevent initialization checks
+const initializedKeys = new Set<string>()
+
 // Memory storage implementation
 class MemoryStorage {
   private store: Map<string, string>
-  private initialized: boolean
   
   constructor() {
     this.store = new Map()
-    this.initialized = false
     this.initializeDefaults()
   }
 
   private initializeDefaults() {
-    // Initialize with empty values to prevent "not initialized" errors
-    const defaultKeys = [
-      'supabase.auth.token',
-      'supabase.auth.refreshToken',
-      'supabase.auth.user',
-      'supabase.auth.expires_at',
-      'supabase.auth.provider_token',
-      'supabase.auth.provider_refresh_token'
-    ]
-    
-    defaultKeys.forEach(key => {
+    AUTH_STORAGE_KEYS.forEach(key => {
       if (!this.store.has(key)) {
         this.store.set(key, '')
+        initializedKeys.add(key)
       }
     })
-    this.initialized = true
   }
 
   getItem(key: string) {
-    if (!this.initialized) {
-      this.initializeDefaults()
+    // Always ensure the key is initialized
+    if (!this.store.has(key)) {
+      this.store.set(key, '')
+      initializedKeys.add(key)
     }
-    return this.store.get(key) || null
+    return this.store.get(key) || ''
   }
 
   setItem(key: string, value: string) {
-    if (!this.initialized) {
-      this.initializeDefaults()
-    }
     this.store.set(key, value)
+    initializedKeys.add(key)
   }
 
   removeItem(key: string) {
-    this.store.delete(key)
+    // Don't actually remove, just set to empty
+    this.store.set(key, '')
   }
 
   clear() {
-    this.store.clear()
+    // Don't actually clear, reinitialize all keys
     this.initializeDefaults()
   }
 
@@ -69,121 +71,129 @@ class MemoryStorage {
 const createHybridStorage = () => {
   const memoryStore = new MemoryStorage()
   
-  // Check if we're in a browser context
-  const isBrowser = typeof window !== 'undefined'
-  
-  // Initialize browser storage with defaults
-  const initializeBrowserStorage = (storage: Storage | MemoryStorage) => {
-    const defaultKeys = [
-      'supabase.auth.token',
-      'supabase.auth.refreshToken',
-      'supabase.auth.user',
-      'supabase.auth.expires_at',
-      'supabase.auth.provider_token',
-      'supabase.auth.provider_refresh_token'
-    ]
-    
-    defaultKeys.forEach(key => {
+  // Initialize storage with empty values
+  const initializeStorage = (storage: Storage | MemoryStorage) => {
+    AUTH_STORAGE_KEYS.forEach(key => {
       try {
-        if (!storage.getItem(key)) {
+        const existing = storage.getItem(key)
+        if (!existing) {
           storage.setItem(key, '')
         }
+        initializedKeys.add(key)
       } catch (e) {
-        console.warn(`Failed to initialize key ${key}:`, e)
+        console.warn(`Storage initialization warning for ${key}:`, e)
       }
     })
   }
-  
+
   let primaryStorage: Storage | MemoryStorage = memoryStore
-  if (isBrowser) {
+  
+  // Only try browser storage in client context
+  if (typeof window !== 'undefined') {
     try {
-      // Test and initialize localStorage
-      window.localStorage.setItem('supabase.test', 'test')
-      window.localStorage.removeItem('supabase.test')
-      initializeBrowserStorage(window.localStorage)
+      initializeStorage(window.localStorage)
       primaryStorage = window.localStorage
     } catch (e) {
-      console.warn('localStorage not available:', e)
       try {
-        // Fallback to sessionStorage
-        window.sessionStorage.setItem('supabase.test', 'test')
-        window.sessionStorage.removeItem('supabase.test')
-        initializeBrowserStorage(window.sessionStorage)
+        initializeStorage(window.sessionStorage)
         primaryStorage = window.sessionStorage
       } catch (e) {
-        console.warn('sessionStorage not available, using memory storage:', e)
+        console.warn('Browser storage not available, using memory storage')
       }
     }
   }
 
   return {
-    getItem: (key: string): string | null => {
+    getItem: (key: string): string => {
       try {
-        // Always check memory first for faster access
-        const memoryValue = memoryStore.getItem(key)
-        if (memoryValue !== null) {
-          return memoryValue
+        // Ensure key is initialized
+        if (!initializedKeys.has(key)) {
+          memoryStore.setItem(key, '')
+          if (primaryStorage !== memoryStore) {
+            try {
+              primaryStorage.setItem(key, '')
+            } catch (e) {
+              // Ignore storage errors
+            }
+          }
+          initializedKeys.add(key)
         }
-        
+
+        // Try memory first
+        const memValue = memoryStore.getItem(key)
+        if (memValue) return memValue
+
+        // Try primary storage
         if (primaryStorage !== memoryStore) {
-          const value = primaryStorage.getItem(key)
-          if (value !== null) {
-            memoryStore.setItem(key, value)
-            return value
+          try {
+            const value = primaryStorage.getItem(key)
+            if (value) {
+              memoryStore.setItem(key, value)
+              return value
+            }
+          } catch (e) {
+            // Ignore storage errors
           }
         }
-        
-        // Initialize with empty string if not found
-        memoryStore.setItem(key, '')
-        if (primaryStorage !== memoryStore) {
-          primaryStorage.setItem(key, '')
-        }
+
         return ''
-      } catch {
-        // Ensure we always return a value
-        const fallback = memoryStore.getItem(key) || ''
-        return fallback
+      } catch (e) {
+        return ''
       }
     },
     setItem: (key: string, value: string): void => {
       try {
-        // Always set in memory first
         memoryStore.setItem(key, value)
+        initializedKeys.add(key)
+        
         if (primaryStorage !== memoryStore) {
-          primaryStorage.setItem(key, value)
+          try {
+            primaryStorage.setItem(key, value)
+          } catch (e) {
+            // Ignore storage errors
+          }
         }
       } catch (e) {
-        console.warn('Error setting storage item:', e)
+        // Ensure the key is at least initialized
+        memoryStore.setItem(key, '')
+        initializedKeys.add(key)
       }
     },
     removeItem: (key: string): void => {
       try {
-        // Set empty string instead of removing to prevent "not initialized" errors
+        // Don't remove, set to empty string
         memoryStore.setItem(key, '')
         if (primaryStorage !== memoryStore) {
-          primaryStorage.setItem(key, '')
+          try {
+            primaryStorage.setItem(key, '')
+          } catch (e) {
+            // Ignore storage errors
+          }
         }
       } catch (e) {
-        console.warn('Error removing storage item:', e)
+        // Ensure the key is at least initialized
+        memoryStore.setItem(key, '')
       }
     },
     length: 0,
-    key: (_index: number) => null,
+    key: () => null,
     clear: () => {
-      try {
-        // Reinitialize with empty values instead of clearing
-        memoryStore.clear()
-        if (primaryStorage !== memoryStore) {
-          const keys = Object.keys(primaryStorage)
-          keys.forEach(key => {
-            if (key.startsWith('supabase.auth.')) {
+      // Don't actually clear, just reinitialize
+      AUTH_STORAGE_KEYS.forEach(key => {
+        try {
+          memoryStore.setItem(key, '')
+          if (primaryStorage !== memoryStore) {
+            try {
               primaryStorage.setItem(key, '')
+            } catch (e) {
+              // Ignore storage errors
             }
-          })
+          }
+          initializedKeys.add(key)
+        } catch (e) {
+          // Ignore errors
         }
-      } catch (e) {
-        console.warn('Error clearing storage:', e)
-      }
+      })
     }
   }
 }
@@ -191,7 +201,7 @@ const createHybridStorage = () => {
 // Create storage instance
 const hybridStorage = createHybridStorage()
 
-// Initialize Supabase with minimal config first
+// Initialize Supabase with minimal config
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     storage: hybridStorage,
