@@ -16,24 +16,34 @@ export default function LoginPage() {
   const redirectAttempts = useRef(0)
 
   useEffect(() => {
-    // Only attempt redirect if we have a valid session
-    if (!loading && session?.access_token && user?.email && redirectAttempts.current < 3) {
-      redirectAttempts.current += 1
-      console.log('Attempting redirect:', {
-        attempt: redirectAttempts.current,
-        hasSession: !!session,
-        userEmail: user.email
-      })
+    const handleRedirect = async () => {
+      // Only attempt redirect if we have a valid session
+      if (!loading && session?.access_token && user?.email && redirectAttempts.current < 3) {
+        redirectAttempts.current += 1
+        console.log('Attempting redirect:', {
+          attempt: redirectAttempts.current,
+          hasSession: !!session,
+          userEmail: user.email,
+          accessToken: !!session.access_token
+        })
 
-      try {
-        const redirectTo = searchParams.get('redirectTo')
-        // Always redirect to home for now to break potential loops
-        router.replace('/')
-      } catch (error) {
-        console.error('Redirect error:', error)
+        try {
+          // Wait for a short delay to ensure session is established
+          await new Promise(resolve => setTimeout(resolve, 500))
+          
+          const redirectTo = searchParams.get('redirectTo')
+          const targetPath = redirectTo ? decodeURIComponent(redirectTo) : '/'
+          
+          // Use window.location for a hard redirect
+          window.location.href = targetPath
+        } catch (error) {
+          console.error('Redirect error:', error)
+        }
       }
     }
-  }, [loading, session, user, router, searchParams])
+
+    handleRedirect()
+  }, [loading, session, user, searchParams])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
