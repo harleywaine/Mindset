@@ -22,7 +22,20 @@ export function createClient() {
           flowType: 'pkce',
           persistSession: true,
           detectSessionInUrl: true,
-          storage: typeof window !== 'undefined' ? window.localStorage : undefined,
+          storage: {
+            getItem: (key) => {
+              if (typeof window === 'undefined') return null
+              return window.localStorage.getItem(key)
+            },
+            setItem: (key, value) => {
+              if (typeof window === 'undefined') return
+              window.localStorage.setItem(key, value)
+            },
+            removeItem: (key) => {
+              if (typeof window === 'undefined') return
+              window.localStorage.removeItem(key)
+            }
+          },
           autoRefreshToken: true,
           debug: process.env.NODE_ENV === 'development'
         },
@@ -54,6 +67,6 @@ export function createClient() {
     return client
   } catch (error) {
     console.error('Error creating Supabase client:', error)
-    throw new Error('Failed to create Supabase client')
+    throw error
   }
 } 
