@@ -12,9 +12,11 @@ export default function LoginPage() {
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [isLoading, setIsLoading] = useState(false)
+  const [isRedirecting, setIsRedirecting] = useState(false)
 
   useEffect(() => {
     if (!loading && user) {
+      setIsRedirecting(true)
       console.log('Redirecting to home, user:', user.email)
       router.replace('/')
     }
@@ -39,17 +41,24 @@ export default function LoginPage() {
     }
   }
 
-  // Don't render the form if we're authenticated
-  if (loading) {
+  // Show loading state during auth check or redirect
+  if (loading || isRedirecting) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#1A1D1F]">
-        <div className="text-white">Loading...</div>
+        <div className="text-white text-lg">
+          {isRedirecting ? 'Redirecting...' : 'Loading...'}
+        </div>
       </div>
     )
   }
 
+  // Don't show the form if we're authenticated
   if (!loading && user) {
-    return null
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#1A1D1F]">
+        <div className="text-white text-lg">Redirecting to home...</div>
+      </div>
+    )
   }
 
   return (
