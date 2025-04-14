@@ -1,6 +1,6 @@
 'use client'
 
-import React, { createContext, useContext, useEffect, useState } from 'react'
+import React, { createContext, useContext, useEffect, useState, useRef } from 'react'
 import { User, AuthError } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase/client'
 
@@ -25,28 +25,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     error: null,
     initialized: false
   })
+  const redirectingRef = useRef(false)
 
+  // Handle auth state initialization and changes
   useEffect(() => {
     let mounted = true
-    let redirecting = false
     console.log('Initializing auth...')
-
-    // Handle redirect based on auth state
-    const handleRedirect = (user: User | null) => {
-      if (redirecting) return
-      redirecting = true
-
-      const currentPath = window.location.pathname
-      if (user && currentPath.includes('/login')) {
-        console.log('Redirecting authenticated user to home')
-        window.location.replace('/')
-      } else if (!user && !currentPath.includes('/login')) {
-        console.log('Redirecting unauthenticated user to login')
-        window.location.replace('/login')
-      } else {
-        redirecting = false
-      }
-    }
 
     // Initialize auth state
     const initializeAuth = async () => {
@@ -69,14 +53,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         console.log('Session retrieved:', session ? 'exists' : 'none')
         if (mounted) {
-          const user = session?.user ?? null
           setState(prev => ({
             ...prev,
-            user,
+            user: session?.user ?? null,
             loading: false,
             initialized: true
           }))
-          handleRedirect(user)
         }
       } catch (error) {
         console.error('Auth initialization error:', error)
@@ -97,14 +79,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } = supabase.auth.onAuthStateChange(async (event, session) => {
       console.log('Auth state changed:', event, session ? 'session exists' : 'no session')
       if (mounted) {
-        const user = session?.user ?? null
         setState(prev => ({
           ...prev,
-          user,
+          user: session?.user ?? null,
           loading: false,
           initialized: true
         }))
-        handleRedirect(user)
       }
     })
 
@@ -118,6 +98,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       subscription.unsubscribe()
     }
   }, [])
+
+  // Handle redirects in a separate effect
+  useEffect(() => {
+    if (!state.initialized || state.loading || redirectingRef.current) {
+      return
+    }
+
+    const currentPath = window.location.pathname
+    const isLoginPage = currentPath.includes('/login')
+    
+    if (state.user && isLoginPage) {
+      console.log('Redirecting authenticated user to home')
+      redirectingRef.current = true
+      window.location.href = '/'
+    } else if (!state.user && !isLoginPage && currentPath !== '/') {
+      console.log('Redirecting unauthenticated user to login')
+      redirectingRef.current = true
+      window.location.href = '/login'
+    }
+  }, [state.user, state.initialized, state.loading])
 
   const signIn = async (email: string, password: string) => {
     try {
