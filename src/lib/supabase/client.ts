@@ -1,23 +1,41 @@
 import { createBrowserClient } from '@supabase/ssr'
 import type { Database } from '@/types/supabase'
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 
 if (!supabaseUrl || !supabaseAnonKey) {
   throw new Error('Missing Supabase environment variables')
 }
 
-let client: ReturnType<typeof createBrowserClient<Database>> | null = null
+let client: ReturnType<typeof createBrowserClient> | null = null
 
 export function createClient() {
   if (client) return client
 
   try {
-    client = createBrowserClient<Database>(
+    client = createBrowserClient(
       supabaseUrl,
       supabaseAnonKey,
       {
+        auth: {
+          persistSession: true,
+          storageKey: 'supabase.auth.token',
+          storage: {
+            getItem: (key: string): string | null => {
+              if (typeof window === 'undefined') return null
+              return window.localStorage.getItem(key)
+            },
+            setItem: (key: string, value: string): void => {
+              if (typeof window === 'undefined') return
+              window.localStorage.setItem(key, value)
+            },
+            removeItem: (key: string): void => {
+              if (typeof window === 'undefined') return
+              window.localStorage.removeItem(key)
+            },
+          },
+        },
         cookies: {
           get(name: string) {
             if (typeof window === 'undefined') return ''
