@@ -2,25 +2,33 @@
 
 import { useSearchParams } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 
 export default function LoginPage() {
-  const { signIn, loading, user } = useAuth()
+  const { signIn, loading, user, session } = useAuth()
   const searchParams = useSearchParams()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [isLoading, setIsLoading] = useState(false)
+  const hasRedirected = useRef(false)
 
   // Handle redirect when user is authenticated
   useEffect(() => {
-    if (user) {
+    // Only redirect if we have both user and session, and haven't redirected yet
+    if (user && session?.access_token && !hasRedirected.current) {
+      hasRedirected.current = true
+      console.log('Redirecting with session:', {
+        userEmail: user.email,
+        hasSession: !!session,
+        accessToken: !!session.access_token
+      })
       const redirectTo = searchParams.get('redirectTo')
       const targetPath = redirectTo ? decodeURIComponent(redirectTo) : '/'
-      window.location.href = targetPath
+      window.location.replace(targetPath) // Using replace instead of href to prevent history stacking
     }
-  }, [user, searchParams])
+  }, [user, session, searchParams])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -33,8 +41,6 @@ export default function LoginPage() {
       if (signInError) {
         throw signInError
       }
-
-      // Auth context will handle the redirect via useEffect
       
     } catch (err: any) {
       console.error('Sign in error:', err)
@@ -48,6 +54,15 @@ export default function LoginPage() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-900">
         <div className="text-white text-lg">Loading...</div>
+      </div>
+    )
+  }
+
+  // If already authenticated and waiting for redirect, show message
+  if (user && session?.access_token) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-900">
+        <div className="text-white text-lg">Redirecting...</div>
       </div>
     )
   }
