@@ -8,6 +8,7 @@ import Link from 'next/link'
 export default function LoginPage() {
   const { signIn, user, loading } = useAuth()
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
@@ -18,9 +19,12 @@ export default function LoginPage() {
     if (!loading && user) {
       setIsRedirecting(true)
       console.log('Redirecting to home, user:', user.email)
-      router.replace('/')
+      const redirectTo = searchParams.get('redirectTo')
+      const targetPath = redirectTo ? decodeURIComponent(redirectTo) : '/'
+      console.log('Redirecting to:', targetPath)
+      router.replace(targetPath)
     }
-  }, [user, loading, router])
+  }, [user, loading, router, searchParams])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
