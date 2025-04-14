@@ -6,23 +6,24 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 
 export default function LoginPage() {
-  const { signIn, user } = useAuth()
+  const { signIn, user, loading } = useAuth()
   const router = useRouter()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
-  const [loading, setLoading] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
 
   useEffect(() => {
-    if (user) {
-      router.push('/')
+    if (!loading && user) {
+      console.log('Redirecting to home, user:', user.email)
+      router.replace('/')
     }
-  }, [user, router])
+  }, [user, loading, router])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
-    setLoading(true)
+    setIsLoading(true)
 
     try {
       const { error: signInError } = await signIn(email, password)
@@ -30,13 +31,25 @@ export default function LoginPage() {
         console.error('Sign in error:', signInError)
         throw signInError
       }
-      // Auth state change will trigger redirect
     } catch (error) {
       console.error('Login error:', error)
       setError('Invalid email or password')
     } finally {
-      setLoading(false)
+      setIsLoading(false)
     }
+  }
+
+  // Don't render the form if we're authenticated
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#1A1D1F]">
+        <div className="text-white">Loading...</div>
+      </div>
+    )
+  }
+
+  if (!loading && user) {
+    return null
   }
 
   return (
@@ -90,10 +103,10 @@ export default function LoginPage() {
           <div>
             <button
               type="submit"
-              disabled={loading}
+              disabled={isLoading}
               className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-[#2B6D79] hover:bg-[#2B6D79]/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#2B6D79] disabled:opacity-50"
             >
-              {loading ? 'Signing in...' : 'Sign in'}
+              {isLoading ? 'Signing in...' : 'Sign in'}
             </button>
           </div>
 
