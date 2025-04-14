@@ -2,7 +2,7 @@
 
 import { useSearchParams, useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 
 export default function LoginPage() {
@@ -13,15 +13,17 @@ export default function LoginPage() {
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [isLoading, setIsLoading] = useState(false)
+  const hasRedirected = useRef(false)
 
   useEffect(() => {
-    if (!loading && user) {
+    if (!loading && user && !hasRedirected.current) {
+      hasRedirected.current = true
       const redirectTo = searchParams.get('redirectTo')
       const targetPath = redirectTo ? decodeURIComponent(redirectTo) : '/'
       console.log('Redirecting to:', targetPath)
-      window.location.href = targetPath // Use window.location for hard redirect
+      router.push(targetPath)
     }
-  }, [user, loading, searchParams])
+  }, [user, loading, searchParams, router])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
