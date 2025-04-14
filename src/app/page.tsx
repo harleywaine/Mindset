@@ -51,24 +51,24 @@ export default function Home() {
   ]
 
   return (
-    <>
+    <main className="min-h-screen p-6">
       {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-2xl font-semibold mb-1">Welcome to Meditation App</h1>
-        <p className="text-gray-400">Let's make some progress</p>
+      <div className="mb-12">
+        <h1 className="text-4xl font-bold text-white mb-2">Welcome to Meditation App</h1>
+        <p className="text-xl text-gray-400">Let's make some progress</p>
       </div>
 
       {/* Switches Section */}
-      <section className="mb-8">
-        <h2 className="text-lg mb-4">Flick the switch</h2>
-        <div className="flex justify-between px-4">
+      <section className="mb-12">
+        <h2 className="text-2xl font-semibold text-white mb-8">Flick the switch</h2>
+        <div className="flex justify-between max-w-xl">
           {switches.map((item) => (
             <Link
               key={item.name}
               href={item.href}
-              className="flex flex-col items-center"
+              className="flex flex-col items-center group"
             >
-              <div className="w-16 h-16 relative mb-2">
+              <div className="w-20 h-20 relative mb-3">
                 <svg
                   viewBox="0 0 64 64"
                   className="w-full h-full absolute"
@@ -86,10 +86,10 @@ export default function Home() {
                   />
                 </svg>
                 <div className="absolute inset-0 flex items-center justify-center">
-                  <item.Icon size={32} weight="light" className="text-white" />
+                  <item.Icon size={36} weight="light" className="text-white" />
                 </div>
               </div>
-              <span className="text-sm text-center whitespace-nowrap">{item.name}</span>
+              <span className="text-lg text-[#6366F1] group-hover:text-[#6366F1]/80 transition-colors">{item.name}</span>
             </Link>
           ))}
         </div>
@@ -97,8 +97,8 @@ export default function Home() {
 
       {/* Foundations Section */}
       <section>
-        <h2 className="text-lg mb-4">Foundations</h2>
-        <div className="space-y-3">
+        <h2 className="text-2xl font-semibold text-white mb-8">Foundations</h2>
+        <div className="space-y-4 max-w-2xl">
           {foundations.map((item) => (
             <LessonCard
               key={item.id}
@@ -111,7 +111,7 @@ export default function Home() {
           ))}
         </div>
       </section>
-    </>
+    </main>
   )
 }
 
