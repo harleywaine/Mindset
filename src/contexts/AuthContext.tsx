@@ -27,13 +27,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     
     const initializeAuth = async () => {
       try {
-        const { data: { session }, error } = await supabase.current.auth.getSession()
-        if (error) throw error
+        console.log('Initializing auth...')
+        const { data: { session: currentSession }, error } = await supabase.current.auth.getSession()
+        
+        if (error) {
+          console.error('Error getting session:', error)
+          throw error
+        }
         
         if (mounted.current) {
-          if (session) {
-            setUser(session.user)
-            setSession(session)
+          console.log('Setting initial session:', currentSession?.user?.email)
+          if (currentSession) {
+            setUser(currentSession.user)
+            setSession(currentSession)
           }
           setLoading(false)
         }
@@ -50,12 +56,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     initializeAuth()
 
     const { data: { subscription } } = supabase.current.auth.onAuthStateChange(
-      async (event, session) => {
-        console.log('Auth state changed:', event, session?.user?.email)
+      async (event, currentSession) => {
+        console.log('Auth state changed:', event, currentSession?.user?.email)
         if (mounted.current) {
-          if (session) {
-            setUser(session.user)
-            setSession(session)
+          if (currentSession) {
+            setUser(currentSession.user)
+            setSession(currentSession)
           } else {
             setUser(null)
             setSession(null)
@@ -71,32 +77,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [])
 
-  const signIn = async (email: string, password: string) => {
-    try {
-      const { data, error } = await supabase.current.auth.signInWithPassword({
-        email,
-        password,
-      })
-
-      if (error) {
-        console.error('Sign in error:', error)
-        return { error }
-      }
-
-      if (mounted.current) {
-        setUser(data.user)
-        setSession(data.session)
-      }
-      return {}
-    } catch (error) {
-      console.error('Sign in error:', error)
-      return { error: error as Error }
-    }
-  }
-
   const signUp = async (email: string, password: string) => {
     try {
-      const { error } = await supabase.current.auth.signUp({
+      console.log('Signing up user:', email)
+      const { data, error } = await supabase.current.auth.signUp({
         email,
         password,
         options: {
@@ -109,6 +93,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return { error }
       }
 
+      console.log('Sign up successful:', data)
       return {}
     } catch (error) {
       console.error('Sign up error:', error)
@@ -116,12 +101,39 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
+  const signIn = async (email: string, password: string) => {
+    try {
+      console.log('Signing in user:', email)
+      const { data, error } = await supabase.current.auth.signInWithPassword({
+        email,
+        password,
+      })
+
+      if (error) {
+        console.error('Sign in error:', error)
+        return { error }
+      }
+
+      if (mounted.current) {
+        console.log('Sign in successful:', data.user?.email)
+        setUser(data.user)
+        setSession(data.session)
+      }
+      return {}
+    } catch (error) {
+      console.error('Sign in error:', error)
+      return { error: error as Error }
+    }
+  }
+
   const signOut = async () => {
     try {
+      console.log('Signing out user:', user?.email)
       const { error } = await supabase.current.auth.signOut()
       if (error) throw error
       
       if (mounted.current) {
+        console.log('Sign out successful')
         setUser(null)
         setSession(null)
       }
