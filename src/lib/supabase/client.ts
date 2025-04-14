@@ -19,35 +19,34 @@ export function createClient() {
       supabaseAnonKey,
       {
         auth: {
+          flowType: 'pkce',
           persistSession: true,
-          storageKey: 'supabase.auth.token',
-          storage: {
-            getItem: (key: string): string | null => {
-              if (typeof window === 'undefined') return null
-              return window.localStorage.getItem(key)
-            },
-            setItem: (key: string, value: string): void => {
-              if (typeof window === 'undefined') return
-              window.localStorage.setItem(key, value)
-            },
-            removeItem: (key: string): void => {
-              if (typeof window === 'undefined') return
-              window.localStorage.removeItem(key)
-            },
-          },
+          detectSessionInUrl: true,
+          storage: typeof window !== 'undefined' ? window.localStorage : undefined,
+          autoRefreshToken: true,
+          debug: process.env.NODE_ENV === 'development'
         },
         cookies: {
           get(name: string) {
             if (typeof window === 'undefined') return ''
-            return document.cookie.split(';').find(row => row.trim().startsWith(`${name}=`))?.split('=')[1] || ''
+            const cookie = document.cookie
+              .split(';')
+              .find((c) => c.trim().startsWith(name + '='))
+            if (!cookie) return ''
+            const value = cookie.split('=')[1]
+            return decodeURIComponent(value)
           },
           set(name: string, value: string, options: { path: string }) {
             if (typeof window === 'undefined') return
-            document.cookie = `${name}=${value}; path=${options.path}`
+            const encodedValue = encodeURIComponent(value)
+            let cookie = name + '=' + encodedValue
+            if (options.path) cookie += '; path=' + options.path
+            cookie += '; SameSite=Lax; secure'
+            document.cookie = cookie
           },
           remove(name: string, options: { path: string }) {
             if (typeof window === 'undefined') return
-            document.cookie = `${name}=; path=${options.path}; expires=Thu, 01 Jan 1970 00:00:00 GMT`
+            document.cookie = name + '=; path=' + options.path + '; expires=Thu, 01 Jan 1970 00:00:00 GMT'
           }
         }
       }
