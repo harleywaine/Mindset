@@ -28,16 +28,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     let mounted = true
+    console.log('Initializing auth...')
 
-    async function initializeAuth() {
+    // Initialize auth state
+    const initializeAuth = async () => {
       try {
-        // Get initial session
+        console.log('Getting session...')
         const { data: { session }, error: sessionError } = await supabase.auth.getSession()
         
         if (sessionError) {
-          throw sessionError
+          console.error('Session error:', sessionError)
+          if (mounted) {
+            setState(prev => ({
+              ...prev,
+              error: sessionError,
+              loading: false,
+              initialized: true
+            }))
+          }
+          return
         }
 
+        console.log('Session retrieved:', session ? 'exists' : 'none')
         if (mounted) {
           setState(prev => ({
             ...prev,
@@ -45,22 +57,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             loading: false,
             initialized: true
           }))
-        }
-
-        // Listen for auth changes
-        const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
-          if (mounted) {
-            setState(prev => ({
-              ...prev,
-              user: session?.user ?? null,
-              loading: false
-            }))
-          }
-        })
-
-        return () => {
-          mounted = false
-          subscription.unsubscribe()
         }
       } catch (error) {
         console.error('Auth initialization error:', error)
@@ -75,14 +71,42 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     }
 
+    // Set up auth state change listener
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log('Auth state changed:', event, session ? 'session exists' : 'no session')
+      if (mounted) {
+        setState(prev => ({
+          ...prev,
+          user: session?.user ?? null,
+          loading: false,
+          initialized: true
+        }))
+      }
+    })
+
+    // Initialize immediately
     initializeAuth()
+
+    // Cleanup
+    return () => {
+      console.log('Cleaning up auth...')
+      mounted = false
+      subscription.unsubscribe()
+    }
   }, [])
 
   const signIn = async (email: string, password: string) => {
     try {
+      console.log('Attempting sign in...')
       setState(prev => ({ ...prev, loading: true, error: null }))
-      const { error } = await supabase.auth.signInWithPassword({ email, password })
-      if (error) throw error
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password })
+      if (error) {
+        console.error('Sign in error:', error)
+        throw error
+      }
+      console.log('Sign in successful:', data.user?.email)
     } catch (error) {
       console.error('Sign in error:', error)
       setState(prev => ({ ...prev, error: error as AuthError }))
@@ -94,9 +118,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signOut = async () => {
     try {
+      console.log('Attempting sign out...')
       setState(prev => ({ ...prev, loading: true, error: null }))
       const { error } = await supabase.auth.signOut()
-      if (error) throw error
+      if (error) {
+        console.error('Sign out error:', error)
+        throw error
+      }
+      console.log('Sign out successful')
     } catch (error) {
       console.error('Sign out error:', error)
       setState(prev => ({ ...prev, error: error as AuthError }))
@@ -105,6 +134,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setState(prev => ({ ...prev, loading: false }))
     }
   }
+
+  // Add debug output for state changes
+  useEffect(() => {
+    console.log('Auth state updated:', {
+      user: state.user ? 'exists' : 'null',
+      loading: state.loading,
+      initialized: state.initialized,
+      error: state.error
+    })
+  }, [state])
 
   // Don't render children until auth is initialized
   if (!state.initialized) {

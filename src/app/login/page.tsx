@@ -6,18 +6,20 @@ import { useEffect, useState } from 'react'
 
 export default function LoginPage() {
   const router = useRouter()
-  const { user, loading, error, signIn } = useAuth()
+  const { user, loading, error: authError, signIn } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [localError, setLocalError] = useState<string | null>(null)
 
   useEffect(() => {
+    console.log('Login page mounted, auth state:', { user, loading })
+    
     if (!loading && user) {
-      console.log('User authenticated, redirecting to home')
-      router.replace('/')
+      console.log('User is authenticated, redirecting to home')
+      router.push('/')
     }
-  }, [loading, user, router])
+  }, [user, loading, router])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -25,9 +27,10 @@ export default function LoginPage() {
 
     setLocalError(null)
     try {
+      console.log('Attempting to sign in with email:', email)
       setIsSubmitting(true)
       await signIn(email, password)
-      // Redirect will happen in useEffect
+      console.log('Sign in successful, waiting for redirect')
     } catch (err) {
       console.error('Login error:', err)
       setLocalError('Failed to sign in. Please check your credentials and try again.')
@@ -36,20 +39,28 @@ export default function LoginPage() {
     }
   }
 
-  // Show loading spinner while initial auth check is happening
+  // Show loading spinner while checking auth state
   if (loading) {
+    console.log('Showing loading spinner')
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary"></div>
+        <div className="flex flex-col items-center space-y-4">
+          <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary"></div>
+          <p className="text-sm text-gray-500 dark:text-gray-400">Checking authentication...</p>
+        </div>
       </div>
     )
   }
 
   // Don't show login form if user is already authenticated
   if (user) {
+    console.log('User is authenticated, showing redirect spinner')
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary"></div>
+        <div className="flex flex-col items-center space-y-4">
+          <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary"></div>
+          <p className="text-sm text-gray-500 dark:text-gray-400">Redirecting...</p>
+        </div>
       </div>
     )
   }
@@ -100,9 +111,9 @@ export default function LoginPage() {
             </div>
           </div>
 
-          {(error || localError) && (
+          {(authError || localError) && (
             <div className="text-red-500 text-sm text-center">
-              {error?.message || localError}
+              {authError?.message || localError}
             </div>
           )}
 
@@ -113,9 +124,9 @@ export default function LoginPage() {
               className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-primary hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isSubmitting ? (
-                <div className="flex items-center">
+                <div className="flex items-center justify-center">
                   <div className="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-white mr-2"></div>
-                  Signing in...
+                  <span>Signing in...</span>
                 </div>
               ) : (
                 'Sign in'
