@@ -19,9 +19,15 @@ export default function LoginPage() {
     if (!loading && user && !hasRedirected.current) {
       hasRedirected.current = true
       const redirectTo = searchParams.get('redirectTo')
-      const targetPath = redirectTo ? decodeURIComponent(redirectTo) : '/'
-      console.log('Redirecting to:', targetPath)
-      router.push(targetPath)
+      const baseUrl = window.location.origin
+      const targetPath = redirectTo ? decodeURIComponent(redirectTo) : '/home'
+      const fullUrl = new URL(targetPath, baseUrl).toString()
+      
+      console.log('Auth state:', { loading, user: user?.email })
+      console.log('Redirecting to full URL:', fullUrl)
+      
+      // Use replace to prevent back button from returning to login
+      router.replace(fullUrl)
     }
   }, [user, loading, searchParams, router])
 
