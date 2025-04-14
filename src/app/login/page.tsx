@@ -1,142 +1,70 @@
 'use client'
 
-import { useSearchParams } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
-import { useState, useEffect, useRef } from 'react'
-
-// Debug logger
-const debug = (message: string, data?: any) => {
-  console.log(`[Login Debug] ${message}`, data || '')
-}
+import { useRouter } from 'next/navigation'
+import { useEffect, useState } from 'react'
 
 export default function LoginPage() {
-  const { signIn, loading, user, session } = useAuth()
-  const searchParams = useSearchParams()
+  const router = useRouter()
+  const { user, loading, error, signIn } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [error, setError] = useState('')
-  const [isLoading, setIsLoading] = useState(false)
-  const mountTime = useRef(Date.now())
-  const redirectAttempts = useRef(0)
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
-  // Track component lifecycle and auth state changes
   useEffect(() => {
-    debug('Component mounted', {
-      mountTime: new Date(mountTime.current).toISOString(),
-      loading,
-      hasUser: !!user,
-      hasSession: !!session,
-      searchParams: searchParams.toString()
-    })
-
-    return () => {
-      debug('Component unmounting', {
-        mountDuration: Date.now() - mountTime.current,
-        redirectAttempts: redirectAttempts.current
-      })
+    if (!loading && user) {
+      router.replace('/')
     }
-  }, [])
-
-  // Monitor auth state changes
-  useEffect(() => {
-    debug('Auth state changed', {
-      loading,
-      hasUser: !!user,
-      hasSession: !!session,
-      userEmail: user?.email,
-      sessionStatus: session ? 'active' : 'none',
-      isLoading
-    })
-  }, [loading, user, session, isLoading])
+  }, [loading, user, router])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (isLoading) {
-      debug('Submit blocked - already loading')
-      return
-    }
-
-    debug('Starting sign in attempt', { email })
-    setError('')
-    setIsLoading(true)
+    if (isSubmitting) return
 
     try {
-      debug('Calling signIn')
-      const { error: signInError, data } = await signIn(email, password)
-      
-      if (signInError) {
-        debug('Sign in error received', signInError)
-        throw signInError
-      }
-
-      debug('Sign in successful', { data })
-      redirectAttempts.current++
-
-      // Simple redirect after successful sign in
-      const redirectTo = searchParams.get('redirectTo')
-      const targetPath = redirectTo ? decodeURIComponent(redirectTo) : '/'
-      
-      debug('Attempting redirect', {
-        attempt: redirectAttempts.current,
-        targetPath,
-        hasRedirectParam: !!redirectTo
-      })
-
-      // Add a small delay to ensure session is established
-      await new Promise(resolve => setTimeout(resolve, 500))
-      window.location.href = targetPath
-      
-    } catch (err: any) {
-      console.error('Sign in error:', err)
-      debug('Sign in error details', {
-        message: err.message,
-        code: err.code,
-        stack: err.stack
-      })
-      setError(err.message || 'Failed to sign in')
-      setIsLoading(false)
+      setIsSubmitting(true)
+      await signIn(email, password)
+      router.replace('/')
+    } catch (err) {
+      console.error('Login error:', err)
+    } finally {
+      setIsSubmitting(false)
     }
   }
 
-  // Show loading state
-  if (loading || isLoading) {
-    const state = loading ? 'auth-loading' : 'sign-in-loading'
-    debug('Showing loading state', { state })
+  if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-900">
-        <div className="text-white text-lg">
-          {isLoading ? 'Signing in...' : 'Loading...'}
-        </div>
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary"></div>
       </div>
     )
   }
 
+  if (user) {
+    return null // Will redirect in useEffect
+  }
+
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-900 p-4">
-      <div className="max-w-md w-full space-y-8 bg-gray-800 p-8 rounded-lg shadow-lg">
+    <div className="min-h-screen flex items-center justify-center p-4">
+      <div className="max-w-md w-full space-y-8">
         <div>
-          <h2 className="text-center text-3xl font-extrabold text-white">
+          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900 dark:text-white">
             Sign in to your account
           </h2>
-          {process.env.NODE_ENV === 'development' && (
-            <div className="mt-2 text-center text-sm text-gray-400">
-              Debug: Mount time {new Date(mountTime.current).toLocaleTimeString()}
-            </div>
-          )}
         </div>
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-          <div className="rounded-md shadow-sm space-y-4">
+          <div className="rounded-md shadow-sm -space-y-px">
             <div>
-              <label htmlFor="email" className="sr-only">
+              <label htmlFor="email-address" className="sr-only">
                 Email address
               </label>
               <input
-                id="email"
+                id="email-address"
                 name="email"
                 type="email"
                 autoComplete="email"
                 required
-                className="appearance-none rounded-lg relative block w-full px-3 py-2 border border-gray-600 bg-gray-700 text-white placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 dark:border-gray-700 placeholder-gray-500 dark:placeholder-gray-400 text-gray-900 dark:text-white rounded-t-md focus:outline-none focus:ring-primary focus:border-primary focus:z-10 sm:text-sm bg-white dark:bg-gray-800"
                 placeholder="Email address"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
@@ -152,7 +80,7 @@ export default function LoginPage() {
                 type="password"
                 autoComplete="current-password"
                 required
-                className="appearance-none rounded-lg relative block w-full px-3 py-2 border border-gray-600 bg-gray-700 text-white placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 dark:border-gray-700 placeholder-gray-500 dark:placeholder-gray-400 text-gray-900 dark:text-white rounded-b-md focus:outline-none focus:ring-primary focus:border-primary focus:z-10 sm:text-sm bg-white dark:bg-gray-800"
                 placeholder="Password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
@@ -161,29 +89,24 @@ export default function LoginPage() {
           </div>
 
           {error && (
-            <div className="text-red-400 text-sm text-center bg-red-900/50 p-2 rounded">{error}</div>
+            <div className="text-red-500 text-sm text-center">
+              {error.message}
+            </div>
           )}
 
           <div>
             <button
               type="submit"
-              disabled={isLoading || loading}
-              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={isSubmitting}
+              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-primary hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary disabled:opacity-50"
             >
-              {isLoading ? 'Signing in...' : 'Sign in'}
+              {isSubmitting ? (
+                <div className="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-white"></div>
+              ) : (
+                'Sign in'
+              )}
             </button>
           </div>
-
-          {process.env.NODE_ENV === 'development' && (
-            <div className="mt-4 text-xs text-gray-400 space-y-1">
-              <div>Debug Info:</div>
-              <div>Loading: {loading ? 'true' : 'false'}</div>
-              <div>Is Loading: {isLoading ? 'true' : 'false'}</div>
-              <div>Has User: {user ? 'true' : 'false'}</div>
-              <div>Has Session: {session ? 'true' : 'false'}</div>
-              <div>Redirect Attempts: {redirectAttempts.current}</div>
-            </div>
-          )}
         </form>
       </div>
     </div>
