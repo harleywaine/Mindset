@@ -57,8 +57,8 @@ const enhancedStorage = {
       memoryStorage.delete(key)
     }
   },
-  length: 0, // Required by Supabase but not used
-  key: () => null, // Required by Supabase but not used
+  length: 0,
+  key: () => null,
 }
 
 // Create the Supabase client with enhanced storage
@@ -69,20 +69,13 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     detectSessionInUrl: false,
     autoRefreshToken: true,
     flowType: 'pkce',
-    debug: true, // Enable debug for all environments temporarily
+    debug: true,
     storageKey: 'supabase.auth.token'
   },
   global: {
     headers: {
       'Cache-Control': 'no-cache',
       'Pragma': 'no-cache'
-    },
-    fetch: (...args) => {
-      return fetch(...args)
-        .catch(err => {
-          console.warn('Supabase fetch error:', err)
-          throw err
-        })
     }
   }
 }) 

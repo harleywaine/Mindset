@@ -38,9 +38,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const initializeAuth = async () => {
       try {
-        // Clear any stale data first
-        supabase.auth.clearSession()
-        
         console.log('[Auth Debug] Initializing auth...')
         const { data: { session: initialSession }, error } = await supabase.auth.getSession()
         
@@ -82,9 +79,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setLoading(true)
       console.log('[Auth Debug] Attempting sign in for:', email)
       
-      // Clear any existing session first
-      await supabase.auth.clearSession()
-      
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
@@ -114,7 +108,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       setLoading(true)
       console.log('[Auth Debug] Signing out...')
-      await supabase.auth.clearSession()
       await supabase.auth.signOut()
       window.location.href = '/login'
     } catch (error) {
