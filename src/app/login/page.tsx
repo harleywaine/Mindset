@@ -1,18 +1,26 @@
 'use client'
 
-import { useSearchParams, useRouter } from 'next/navigation'
+import { useSearchParams } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 
 export default function LoginPage() {
-  const { signIn, loading } = useAuth()
-  const router = useRouter()
+  const { signIn, loading, user } = useAuth()
   const searchParams = useSearchParams()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [isLoading, setIsLoading] = useState(false)
+
+  // Handle redirect when user is authenticated
+  useEffect(() => {
+    if (user) {
+      const redirectTo = searchParams.get('redirectTo')
+      const targetPath = redirectTo ? decodeURIComponent(redirectTo) : '/'
+      window.location.href = targetPath
+    }
+  }, [user, searchParams])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -26,25 +34,22 @@ export default function LoginPage() {
         throw signInError
       }
 
-      // Wait a moment for the session to be set
-      await new Promise(resolve => setTimeout(resolve, 500))
-
-      // Try Next.js router first
-      try {
-        const redirectTo = searchParams.get('redirectTo')
-        const targetPath = redirectTo ? decodeURIComponent(redirectTo) : '/'
-        router.push(targetPath)
-      } catch (routerError) {
-        // Fallback to window.location if router fails
-        console.error('Router redirect failed, using fallback:', routerError)
-        window.location.href = '/'
-      }
+      // Auth context will handle the redirect via useEffect
+      
     } catch (err: any) {
       console.error('Sign in error:', err)
       setError(err.message || 'Failed to sign in')
-    } finally {
       setIsLoading(false)
     }
+  }
+
+  // Show loading state while checking auth
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-900">
+        <div className="text-white text-lg">Loading...</div>
+      </div>
+    )
   }
 
   return (
