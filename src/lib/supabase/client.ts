@@ -3,102 +3,143 @@ import { createClient } from '@supabase/supabase-js'
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 
-// Memory fallback for when storage is not available
-const memoryStorage = new Map<string, string>()
-
-// Pre-initialize cache with empty values
-const CACHE_KEYS = [
-  'supabase.auth.token',
-  'supabase.auth.refreshToken',
-  'supabase.auth.user'
-]
-
-// Initialize storage with default values
-const initializeStorage = () => {
-  const storage = typeof window !== 'undefined' ? window.localStorage : null
+// Memory storage implementation
+class MemoryStorage {
+  private store: Map<string, string>
   
-  if (!storage) {
-    // Initialize memory storage with empty values
-    CACHE_KEYS.forEach(key => memoryStorage.set(key, ''))
-    return memoryStorage
+  constructor() {
+    this.store = new Map()
   }
 
-  try {
-    // Pre-initialize cache keys
-    CACHE_KEYS.forEach(key => {
-      if (!storage.getItem(key)) {
-        storage.setItem(key, '')
-      }
-    })
-    return storage
-  } catch (e) {
-    console.warn('Storage not available, using memory storage')
-    CACHE_KEYS.forEach(key => memoryStorage.set(key, ''))
-    return memoryStorage
+  getItem(key: string) {
+    return this.store.get(key) || null
+  }
+
+  setItem(key: string, value: string) {
+    this.store.set(key, value)
+  }
+
+  removeItem(key: string) {
+    this.store.delete(key)
+  }
+
+  clear() {
+    this.store.clear()
+  }
+
+  key() {
+    return null
+  }
+
+  get length() {
+    return this.store.size
   }
 }
 
-// Initialize storage early
-const storageImpl = initializeStorage()
-console.log('[Storage Debug] Storage initialized')
+// Create a hybrid storage that works in all contexts
+const createHybridStorage = () => {
+  const memoryStore = new MemoryStorage()
+  
+  // Check if we're in a browser context
+  const isBrowser = typeof window !== 'undefined'
+  
+  // Try to use localStorage, fallback to memory
+  const primaryStorage = isBrowser ? window.localStorage : memoryStore
 
-// Enhanced storage implementation with memory fallback
-const enhancedStorage = {
-  getItem: (key: string): string | null => {
-    try {
-      if (storageImpl instanceof Map) {
-        return memoryStorage.get(key) || null
+  return {
+    getItem: (key: string): string | null => {
+      try {
+        // Always try primary storage first
+        const value = primaryStorage.getItem(key)
+        if (value !== null) {
+          // Sync to memory
+          memoryStore.setItem(key, value)
+          return value
+        }
+        // Fallback to memory store
+        return memoryStore.getItem(key)
+      } catch {
+        return memoryStore.getItem(key)
       }
-      const value = storageImpl.getItem(key)
-      return value || memoryStorage.get(key) || null
-    } catch (error) {
-      console.warn('[Storage Debug] Error getting item:', key, error)
-      return memoryStorage.get(key) || null
-    }
-  },
-  setItem: (key: string, value: string): void => {
-    try {
-      // Always set in memory first
-      memoryStorage.set(key, value)
-      
-      if (!(storageImpl instanceof Map)) {
-        storageImpl.setItem(key, value)
+    },
+    setItem: (key: string, value: string): void => {
+      try {
+        // Always set in memory first
+        memoryStore.setItem(key, value)
+        // Try to set in primary storage
+        primaryStorage.setItem(key, value)
+      } catch (e) {
+        console.warn('Error setting storage item:', e)
       }
-    } catch (error) {
-      console.warn('[Storage Debug] Error setting item:', key, error)
-    }
-  },
-  removeItem: (key: string): void => {
-    try {
-      memoryStorage.delete(key)
-      if (!(storageImpl instanceof Map)) {
-        storageImpl.removeItem(key)
+    },
+    removeItem: (key: string): void => {
+      try {
+        memoryStore.removeItem(key)
+        primaryStorage.removeItem(key)
+      } catch (e) {
+        console.warn('Error removing storage item:', e)
       }
-    } catch (error) {
-      console.warn('[Storage Debug] Error removing item:', key, error)
+    },
+    // Required properties for Storage interface
+    length: 0,
+    key: (_index: number) => null,
+    clear: () => {
+      try {
+        memoryStore.clear()
+        if (primaryStorage !== memoryStore) {
+          primaryStorage.clear()
+        }
+      } catch (e) {
+        console.warn('Error clearing storage:', e)
+      }
     }
-  },
-  length: 0,
-  key: () => null,
+  }
 }
 
-// Create the Supabase client with enhanced storage
+// Create storage instance
+const hybridStorage = createHybridStorage()
+
+// Initialize Supabase with minimal config first
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
-    storage: enhancedStorage,
+    storage: hybridStorage,
     persistSession: true,
     detectSessionInUrl: false,
     autoRefreshToken: true,
     flowType: 'pkce',
     debug: true,
     storageKey: 'supabase.auth.token'
-  },
-  global: {
-    headers: {
-      'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
-      'Pragma': 'no-cache',
-      'Expires': '0',
-      'Surrogate-Control': 'no-store'
+  }
+})
+
+// Initialize storage with default session if needed
+if (typeof window !== 'undefined') {
+  // Ensure storage is initialized in client context
+  const initializeStorage = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (session) {
+        // Store session data
+        hybridStorage.setItem('supabase.auth.token', session.access_token)
+        if (session.refresh_token) {
+          hybridStorage.setItem('supabase.auth.refreshToken', session.refresh_token)
+        }
+        hybridStorage.setItem('supabase.auth.user', JSON.stringify(session.user))
+      } else {
+        // Initialize with empty values to prevent "not initialized" errors
+        hybridStorage.setItem('supabase.auth.token', '')
+        hybridStorage.setItem('supabase.auth.refreshToken', '')
+        hybridStorage.setItem('supabase.auth.user', '')
+      }
+    } catch (error) {
+      console.warn('Error initializing storage:', error)
+      // Set empty values as fallback
+      hybridStorage.setItem('supabase.auth.token', '')
+      hybridStorage.setItem('supabase.auth.refreshToken', '')
+      hybridStorage.setItem('supabase.auth.user', '')
     }
   }
-}) 
+
+  // Run initialization
+  initializeStorage()
+} 
