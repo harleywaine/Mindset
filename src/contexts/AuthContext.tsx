@@ -8,7 +8,7 @@ type AuthContextType = {
   user: User | null
   session: Session | null
   loading: boolean
-  signIn: (email: string, password: string) => Promise<{ error?: Error, session?: Session }>
+  signIn: (email: string, password: string) => Promise<{ error?: Error }>
   signUp: (email: string, password: string) => Promise<{ error?: Error }>
   signOut: () => Promise<void>
 }
@@ -20,13 +20,38 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null)
   const [loading, setLoading] = useState(true)
   const supabase = useRef(createClient())
-  const mounted = useRef(true)
+  const mounted = useRef(false)
 
   useEffect(() => {
-    checkUser()
+    mounted.current = true
+    
+    const initializeAuth = async () => {
+      try {
+        const { data: { session }, error } = await supabase.current.auth.getSession()
+        if (error) throw error
+        
+        if (mounted.current) {
+          if (session) {
+            setUser(session.user)
+            setSession(session)
+          }
+          setLoading(false)
+        }
+      } catch (error) {
+        console.error('Error initializing auth:', error)
+        if (mounted.current) {
+          setUser(null)
+          setSession(null)
+          setLoading(false)
+        }
+      }
+    }
+
+    initializeAuth()
 
     const { data: { subscription } } = supabase.current.auth.onAuthStateChange(
       async (event, session) => {
+        console.log('Auth state changed:', event, session?.user?.email)
         if (mounted.current) {
           if (session) {
             setUser(session.user)
@@ -46,32 +71,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [])
 
-  const checkUser = async () => {
-    try {
-      const { data: { session }, error } = await supabase.current.auth.getSession()
-      
-      if (error) {
-        throw error
-      }
-
-      if (session) {
-        setUser(session.user)
-        setSession(session)
-      } else {
-        setUser(null)
-        setSession(null)
-      }
-    } catch (error) {
-      console.error('Error checking user:', error)
-      setUser(null)
-      setSession(null)
-    } finally {
-      if (mounted.current) {
-        setLoading(false)
-      }
-    }
-  }
-
   const signIn = async (email: string, password: string) => {
     try {
       const { data, error } = await supabase.current.auth.signInWithPassword({
@@ -84,7 +83,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return { error }
       }
 
-      return { session: data.session }
+      if (mounted.current) {
+        setUser(data.user)
+        setSession(data.session)
+      }
+      return {}
     } catch (error) {
       console.error('Sign in error:', error)
       return { error: error as Error }
@@ -117,8 +120,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const { error } = await supabase.current.auth.signOut()
       if (error) throw error
-      setUser(null)
-      setSession(null)
+      
+      if (mounted.current) {
+        setUser(null)
+        setSession(null)
+      }
     } catch (error) {
       console.error('Sign out error:', error)
       throw error
