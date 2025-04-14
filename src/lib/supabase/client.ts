@@ -6,48 +6,59 @@ const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 // Memory fallback for when storage is not available
 const memoryStorage = new Map<string, string>()
 
+// Initialize storage with default values
+const initializeStorage = () => {
+  if (typeof window !== 'undefined') {
+    try {
+      // Set a test value to check if storage is working
+      window.sessionStorage.setItem('supabase.test-storage', 'initialized')
+      window.sessionStorage.removeItem('supabase.test-storage')
+      return window.sessionStorage
+    } catch {
+      console.warn('SessionStorage not available, falling back to memory storage')
+    }
+  }
+  return null
+}
+
+// Initialize storage early
+const storageImpl = initializeStorage()
+
 // Enhanced storage implementation with memory fallback
 const enhancedStorage = {
   getItem: (key: string) => {
     try {
-      // Try sessionStorage first
-      if (typeof window !== 'undefined') {
-        const value = window.sessionStorage.getItem(key)
+      if (storageImpl) {
+        const value = storageImpl.getItem(key)
         if (value !== null) return value
       }
-      // Fall back to memory storage
       return memoryStorage.get(key) || null
     } catch {
-      // If all else fails, try memory storage
       return memoryStorage.get(key) || null
     }
   },
   setItem: (key: string, value: string) => {
     try {
-      // Try to use sessionStorage
-      if (typeof window !== 'undefined') {
-        window.sessionStorage.setItem(key, value)
+      if (storageImpl) {
+        storageImpl.setItem(key, value)
       }
-      // Always set in memory as backup
       memoryStorage.set(key, value)
     } catch {
-      // If sessionStorage fails, just use memory
       memoryStorage.set(key, value)
     }
   },
   removeItem: (key: string) => {
     try {
-      // Try to remove from sessionStorage
-      if (typeof window !== 'undefined') {
-        window.sessionStorage.removeItem(key)
+      if (storageImpl) {
+        storageImpl.removeItem(key)
       }
-      // Always remove from memory
       memoryStorage.delete(key)
     } catch {
-      // If sessionStorage fails, just remove from memory
       memoryStorage.delete(key)
     }
-  }
+  },
+  length: 0, // Required by Supabase but not used
+  key: () => null, // Required by Supabase but not used
 }
 
 // Create the Supabase client with enhanced storage
@@ -55,17 +66,23 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     storage: enhancedStorage,
     persistSession: true,
-    detectSessionInUrl: true,
+    detectSessionInUrl: false,
     autoRefreshToken: true,
     flowType: 'pkce',
-    debug: process.env.NODE_ENV === 'development'
+    debug: true, // Enable debug for all environments temporarily
+    storageKey: 'supabase.auth.token'
   },
   global: {
+    headers: {
+      'Cache-Control': 'no-cache',
+      'Pragma': 'no-cache'
+    },
     fetch: (...args) => {
-      return fetch(...args).catch(err => {
-        console.warn('Supabase fetch error:', err)
-        throw err
-      })
+      return fetch(...args)
+        .catch(err => {
+          console.warn('Supabase fetch error:', err)
+          throw err
+        })
     }
   }
 }) 

@@ -18,72 +18,73 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [session, setSession] = useState<Session | null>(null)
   const [loading, setLoading] = useState(true)
-  const [initialized, setInitialized] = useState(false)
 
   // Handle auth state updates
   const handleAuthStateChange = useCallback(async (_event: string, newSession: Session | null) => {
-    if (!initialized) return
+    console.log('[Auth Debug] Auth state changed:', _event, newSession?.user?.email)
     
-    try {
-      if (newSession?.user.id !== user?.id) {
-        setSession(newSession)
-        setUser(newSession?.user ?? null)
-      }
-    } catch (error) {
-      console.warn('Error handling auth state change:', error)
+    if (_event === 'SIGNED_IN' || _event === 'TOKEN_REFRESHED') {
+      setSession(newSession)
+      setUser(newSession?.user ?? null)
+    } else if (_event === 'SIGNED_OUT') {
+      setSession(null)
+      setUser(null)
     }
-  }, [user?.id, initialized])
+  }, [])
 
   // Initialize auth state
   useEffect(() => {
     let mounted = true
-    let retryCount = 0
-    const maxRetries = 3
 
     const initializeAuth = async () => {
       try {
-        // Get initial session
-        const { data: { session: initialSession } } = await supabase.auth.getSession()
+        // Clear any stale data first
+        supabase.auth.clearSession()
         
+        console.log('[Auth Debug] Initializing auth...')
+        const { data: { session: initialSession }, error } = await supabase.auth.getSession()
+        
+        if (error) {
+          console.warn('[Auth Debug] Error getting session:', error.message)
+          throw error
+        }
+
         if (mounted) {
+          console.log('[Auth Debug] Setting initial session:', initialSession?.user?.email)
           setSession(initialSession)
           setUser(initialSession?.user ?? null)
           setLoading(false)
-          setInitialized(true)
         }
       } catch (error) {
-        console.warn('Error initializing auth:', error)
-        if (mounted && retryCount < maxRetries) {
-          retryCount++
-          // Exponential backoff for retries
-          setTimeout(initializeAuth, Math.pow(2, retryCount) * 1000)
-        } else if (mounted) {
+        console.warn('[Auth Debug] Error initializing auth:', error)
+        if (mounted) {
           setLoading(false)
-          setInitialized(true)
         }
       }
     }
 
-    // Initialize
-    initializeAuth()
+    // Set up auth state listener
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(handleAuthStateChange)
 
-    // Set up auth state listener only after initialization
-    let subscription: { unsubscribe: () => void } | null = null
-    if (initialized) {
-      const { data } = supabase.auth.onAuthStateChange(handleAuthStateChange)
-      subscription = data.subscription
-    }
+    // Initialize auth
+    initializeAuth()
 
     return () => {
       mounted = false
-      if (subscription) {
-        subscription.unsubscribe()
-      }
+      subscription.unsubscribe()
     }
   }, [handleAuthStateChange])
 
   const signIn = async (email: string, password: string) => {
     try {
+      setLoading(true)
+      console.log('[Auth Debug] Attempting sign in for:', email)
+      
+      // Clear any existing session first
+      await supabase.auth.clearSession()
+      
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
@@ -91,25 +92,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       
       if (error) throw error
 
-      // Force a page reload after successful sign-in
+      console.log('[Auth Debug] Sign in successful:', data?.user?.email)
+      
+      // Wait a moment for the session to be properly established
+      await new Promise(resolve => setTimeout(resolve, 500))
+      
       if (data?.user) {
         window.location.href = '/'
-        return { error: null, data }
       }
       
       return { error: null, data }
     } catch (error: any) {
-      console.warn('Sign in error:', error)
+      console.warn('[Auth Debug] Sign in error:', error)
       return { error, data: null }
+    } finally {
+      setLoading(false)
     }
   }
 
   const signOut = async () => {
     try {
+      setLoading(true)
+      console.log('[Auth Debug] Signing out...')
+      await supabase.auth.clearSession()
       await supabase.auth.signOut()
       window.location.href = '/login'
     } catch (error) {
-      console.warn('Sign out error:', error)
+      console.warn('[Auth Debug] Sign out error:', error)
+    } finally {
+      setLoading(false)
     }
   }
 
