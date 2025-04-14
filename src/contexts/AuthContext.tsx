@@ -1,131 +1,125 @@
 'use client'
 
-import React, { createContext, useContext, useEffect, useState, useCallback } from 'react'
-import { User, Session } from '@supabase/supabase-js'
+import React, { createContext, useContext, useEffect, useState } from 'react'
+import { User, AuthError } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase/client'
 
-interface AuthContextType {
-  signIn: (email: string, password: string) => Promise<{ error: Error | null; data?: any }>
-  signOut: () => Promise<void>
+interface AuthState {
   user: User | null
-  session: Session | null
   loading: boolean
+  error: AuthError | null
+  initialized: boolean
+}
+
+interface AuthContextType extends AuthState {
+  signIn: (email: string, password: string) => Promise<void>
+  signOut: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null)
-  const [session, setSession] = useState<Session | null>(null)
-  const [loading, setLoading] = useState(true)
+  const [state, setState] = useState<AuthState>({
+    user: null,
+    loading: true,
+    error: null,
+    initialized: false
+  })
 
-  // Handle auth state updates
-  const handleAuthStateChange = useCallback(async (_event: string, newSession: Session | null) => {
-    console.log('[Auth Debug] Auth state changed:', _event, newSession?.user?.email)
-    
-    if (_event === 'SIGNED_IN' || _event === 'TOKEN_REFRESHED') {
-      setSession(newSession)
-      setUser(newSession?.user ?? null)
-    } else if (_event === 'SIGNED_OUT') {
-      setSession(null)
-      setUser(null)
-    }
-  }, [])
-
-  // Initialize auth state
   useEffect(() => {
     let mounted = true
 
-    const initializeAuth = async () => {
+    async function initializeAuth() {
       try {
-        console.log('[Auth Debug] Initializing auth...')
-        const { data: { session: initialSession }, error } = await supabase.auth.getSession()
+        // Get initial session
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession()
         
-        if (error) {
-          console.warn('[Auth Debug] Error getting session:', error.message)
-          throw error
+        if (sessionError) {
+          throw sessionError
         }
 
         if (mounted) {
-          console.log('[Auth Debug] Setting initial session:', initialSession?.user?.email)
-          setSession(initialSession)
-          setUser(initialSession?.user ?? null)
-          setLoading(false)
+          setState(prev => ({
+            ...prev,
+            user: session?.user ?? null,
+            loading: false,
+            initialized: true
+          }))
+        }
+
+        // Listen for auth changes
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+          if (mounted) {
+            setState(prev => ({
+              ...prev,
+              user: session?.user ?? null,
+              loading: false
+            }))
+          }
+        })
+
+        return () => {
+          mounted = false
+          subscription.unsubscribe()
         }
       } catch (error) {
-        console.warn('[Auth Debug] Error initializing auth:', error)
+        console.error('Auth initialization error:', error)
         if (mounted) {
-          setLoading(false)
+          setState(prev => ({
+            ...prev,
+            error: error as AuthError,
+            loading: false,
+            initialized: true
+          }))
         }
       }
     }
 
-    // Set up auth state listener
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(handleAuthStateChange)
-
-    // Initialize auth
     initializeAuth()
-
-    return () => {
-      mounted = false
-      subscription.unsubscribe()
-    }
-  }, [handleAuthStateChange])
+  }, [])
 
   const signIn = async (email: string, password: string) => {
     try {
-      setLoading(true)
-      console.log('[Auth Debug] Attempting sign in for:', email)
-      
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      })
-      
+      setState(prev => ({ ...prev, loading: true, error: null }))
+      const { error } = await supabase.auth.signInWithPassword({ email, password })
       if (error) throw error
-
-      console.log('[Auth Debug] Sign in successful:', data?.user?.email)
-      
-      // Wait a moment for the session to be properly established
-      await new Promise(resolve => setTimeout(resolve, 500))
-      
-      if (data?.user) {
-        window.location.href = '/'
-      }
-      
-      return { error: null, data }
-    } catch (error: any) {
-      console.warn('[Auth Debug] Sign in error:', error)
-      return { error, data: null }
+    } catch (error) {
+      console.error('Sign in error:', error)
+      setState(prev => ({ ...prev, error: error as AuthError }))
+      throw error
     } finally {
-      setLoading(false)
+      setState(prev => ({ ...prev, loading: false }))
     }
   }
 
   const signOut = async () => {
     try {
-      setLoading(true)
-      console.log('[Auth Debug] Signing out...')
-      await supabase.auth.signOut()
-      window.location.href = '/login'
+      setState(prev => ({ ...prev, loading: true, error: null }))
+      const { error } = await supabase.auth.signOut()
+      if (error) throw error
     } catch (error) {
-      console.warn('[Auth Debug] Sign out error:', error)
+      console.error('Sign out error:', error)
+      setState(prev => ({ ...prev, error: error as AuthError }))
+      throw error
     } finally {
-      setLoading(false)
+      setState(prev => ({ ...prev, loading: false }))
     }
   }
 
-  const value = {
-    signIn,
-    signOut,
-    user,
-    session,
-    loading,
+  // Don't render children until auth is initialized
+  if (!state.initialized) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary"></div>
+      </div>
+    )
   }
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
+  return (
+    <AuthContext.Provider value={{ ...state, signIn, signOut }}>
+      {children}
+    </AuthContext.Provider>
+  )
 }
 
 export function useAuth() {
