@@ -14,36 +14,56 @@ export default function LoginPage() {
   const [error, setError] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const redirectAttempts = useRef(0)
+  const initialized = useRef(false)
 
   useEffect(() => {
-    const handleRedirect = async () => {
-      // Only attempt redirect if we have a valid session
-      if (!loading && session?.access_token && user?.email && redirectAttempts.current < 3) {
-        redirectAttempts.current += 1
-        console.log('Attempting redirect:', {
-          attempt: redirectAttempts.current,
-          hasSession: !!session,
-          userEmail: user.email,
-          accessToken: !!session.access_token
-        })
+    // Skip initial render to avoid premature redirects
+    if (!initialized.current) {
+      initialized.current = true
+      return
+    }
 
-        try {
-          // Wait for a short delay to ensure session is established
-          await new Promise(resolve => setTimeout(resolve, 500))
-          
-          const redirectTo = searchParams.get('redirectTo')
-          const targetPath = redirectTo ? decodeURIComponent(redirectTo) : '/'
-          
-          // Use window.location for a hard redirect
+    const handleRedirect = async () => {
+      // Only proceed if we're not loading and have required session data
+      if (loading || !session?.access_token || !user?.email) {
+        return
+      }
+
+      // Prevent excessive redirect attempts
+      if (redirectAttempts.current >= 3) {
+        console.error('Max redirect attempts reached')
+        return
+      }
+
+      redirectAttempts.current += 1
+      console.log('Auth state:', {
+        attempt: redirectAttempts.current,
+        loading,
+        hasSession: !!session,
+        userEmail: user.email,
+        accessToken: !!session.access_token
+      })
+
+      try {
+        // Wait for initialization
+        await new Promise(resolve => setTimeout(resolve, 1000))
+        
+        const redirectTo = searchParams.get('redirectTo')
+        const targetPath = redirectTo ? decodeURIComponent(redirectTo) : '/'
+        
+        // Use router.push for the first attempts, fallback to window.location
+        if (redirectAttempts.current < 2) {
+          router.push(targetPath)
+        } else {
           window.location.href = targetPath
-        } catch (error) {
-          console.error('Redirect error:', error)
         }
+      } catch (error) {
+        console.error('Redirect error:', error)
       }
     }
 
     handleRedirect()
-  }, [loading, session, user, searchParams])
+  }, [loading, session, user, searchParams, router])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
